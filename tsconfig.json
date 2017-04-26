@@ -1,0 +1,23 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"target": "esnext",
+		"lib": [
+			"es2017"
+		],
+		"allowJs": false,
+		"noImplicitAny": true,
+		"noImplicitThis": true,
+		"strictNullChecks": true,
+		"noImplicitReturns": true,
+		"sourceMap": true,
+		"experimentalDecorators": true,
+		"noImplicitUseStrict": true,
+		"outDir": "dist",
+		"declaration": true
+	},
+	"include": [
+		"./src/**/*",
+		"./test/**/*"
+	]
+}

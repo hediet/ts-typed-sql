@@ -1,0 +1,209 @@
+import { FromItem, Table } from '../src/views';
+import { SelectQuery, asc } from '../src/queries/select-query';
+import { TypeOfColumnDescription } from '../src/columns';
+import * as s from '../src';
+
+import c = s.Columns;
+import e = s.Expressions;
+import from = s.from;
+import { ImplicitColumns } from "../src";
+
+
+const asset_classes = table({ name: "asset_classes", schema: "steam" },
+	{
+		market_hash_name: column<string>(),
+		name: column<string>(),
+		wear: column<string | null>(),
+		coin_price: column<number | null>(),
+		updated: column<Date>(),
+		update_price_automatically: column<boolean>(),
+		can_deposit: column<boolean>(),
+		requires_withdraw_confirmation: column<boolean>()
+	},
+	{ id: column<number>() }
+);
+
+const asset_subclasses = table({ name: "asset_subclasses", schema: "steam" },
+	{
+		class_id: asset_classes.id,
+		image_link_suffix: column<string>(),
+		phase: column<string | null>(),
+		coin_price: column<number | null>()
+	},
+	{ id: column<number>() }
+);
+
+const bot_asset_inventories = table({ name: "bot_asset_inventories", schema: "steam" }, {
+	assetid: column<string>(),
+	subclass_id: asset_subclasses.id,
+	owning_bot_id: column<number>(),
+	received_in_trade: column<string>(),
+	sent_in_trade: column<string>()
+});
+
+
+
+
+
+/*
+await db.exec(
+   db.prepare<{ x: number }>("VQrcV1", params =>
+        from(foo).select(foo.baz).where(foo.x.equals(params.x)),
+   { x: 10 });
+
+ */
+
+	it("", () => {
+
+
+
+ 
+
+		// Table|AliasedTable|AliasedQuery
+		// NamedView
+
+		const data = s.aliasedValues("all_persons", [
+			{ firstname: "Henning", lastname: "Dieterichs",
+				parentFirstname: "Petra", parentLastname: "Dieterichs", id: 0 }]);
+
+		// s.query().with(data).;
+		const children = data.as("children");
+		const parents = data.as("parents");
+
+		check<{ name: string, parentId: number }>(
+			s.query()
+				//.with(data)
+				.from(children).select(e.concat(children.firstname, " ", children.lastname).as("name"))
+				.leftJoin(parents, { firstname: children.parentFirstname, lastname: children.parentLastname })
+				.select(parents.id.as("parentId")),
+			`SELECT CONCAT("firstname", ' ', "lastname") as "name", "parents"."id" as "parentId" FROM "all_persons", "all_persons" as "parents" `
+			+ `WHERE "parents"."firstname" = "parentFirstname" AND "parents"."lastname" = "parentLastname"`
+		);
+
+		check<{ isMaxOrJohn: boolean }>(
+			s.query()
+				.from(persons).select(persons.firstname.isInValues(["1"]).as("isMaxOrJohn")),
+			`SELECT ("firstname" IN ('max', 'john')) AS "isMaxOrJohn"`
+		);
+
+
+from(persons).select(persons.id, persons.firstname).asExpression();
+from(persons).asExpression();
+from(persons).select("lastname").select("id").asExpression();
+from(persons).select("lastname", "id").asExpression();
+from(persons).select(persons.id).select("firstname").asExpression();
+
+from(persons).select("id").asExpression();
+from(persons).select("lastname").asExpression();
+from(persons).select(persons.id).asExpression();
+
+s.select(persons.id).from(persons);
+
+
+s.query().select(e.val(1).isIn(
+		s.from(persons).select(persons.id.as("foo"))
+	).as("test"));
+
+() => {
+
+	const t = s.namedView("t", { n: c.number });
+	t.bind(s.unionAll(
+		from(s.valuesAs("f", { n: c.number }, [{ n: 1 }])).select("n"),
+		from(t).select(t.n.plus(1).as("n")).where(t.n.isLessThan(100))
+	));
+
+	s.from(t).withRecursive(t).select(t.n.sum().as("sum"));
+
+
+	`
+	WITH RECURSIVE t AS (
+		SELECT f.* FROM (VALUES (1)) AS "f" ("n")
+	UNION ALL
+		SELECT n+1 FROM t WHERE n < 100
+	)
+	SELECT sum(t.n) AS "sum" FROM t;
+	`
+
+};
+
+() => {
+
+	const t = s.namedView("t", { n: c.number });
+	t.bindAndOverrideColumnNames(s.unionAll(
+		s.values([[1]]),
+		s.from(t).select(t.n.plus(1).as("n")).where(t.n.isLessThan(100))
+	));
+
+	s.from(t).select(t.n.sum().as("sum"));
+	`
+	SELECT sum(t.n) FROM (
+		VALUES (1)
+	UNION ALL
+		SELECT t.n+1 FROM t WHERE t.n < 100
+	) as t(n);
+	`;
+
+
+	s.from(t).select(t.n.sum().as("sum")).withRecursive(t);
+	`
+	WITH RECURSIVE t(n) AS (
+		VALUES (1)
+	UNION ALL
+		SELECT t.n+1 AS "n" FROM t WHERE t.n < 100
+	)
+	SELECT sum(t.n) AS "sum" FROM t;
+	`;
+};
+
+
+
+
+	});
+});
+
+
+
+
+
+
+/*
+
+		let from: any;
+		let bot_assets, asset_subclasses: any;
+		let bot_asset_inventories: any;
+
+		from(bot_asset_inventories).where(_ => _.sent_in_trade.isNotNull())
+			.leftJoin(asset_subclasses, { id: bot_assets.subclass_id }).select(_ => [ _.id.as("subclassId") ])
+			.leftJoin(asset_classes, { id: asset_subclasses.class_id }).select(_ => [ _.name.as("name"), _.coin_price.as("coinPrice") ])
+
+		const inv = bot_asset_inventories, subclass = asset_subclasses, cl = asset_classes; 
+		from(inv).where(inv.sent_in_trade.isNotNull())
+			.leftJoin(subclass, { id: inv.subclass_id })
+			.leftJoin(cl, { id: subclass.class_id })
+			.select(subclass.id.as("subclassId"), cl.name, e.coalesce(subclass.coin_price, cl.coin_price).as("coinPrice"))
+
+			`
+			SELECT asset_subclasses.id as subclassId, asset_classes.name, COALESCE(asset_subclasses.coin_price, asset_classes.coin_price)
+			FROM bot_asset_inventories
+			LEFT JOIN asset_subclasses ON bot_asset_inventories.id = bot_asset_inventories.subclass_id
+			LEFT JOIN asset_classes ON asset_subclasses.class_id = asset_classes.subclass_id
+			`;
+
+			from(bot_asset_inventories
+				.leftJoin(asset_subclasses.as("sc"), { class_id: bot_asset_inventories.id })
+				.leftJoin(asset_classes))
+
+		const result = await bind(() => {
+			const assets = bot_asset_inventories.as("t"), subclasses = asset_subclasses, classes = asset_classes; 
+
+			return from(assets).where(assets.sent_in_trade.isNotNull())
+				.leftJoin(subclasses, { id: assets.subclass_id })
+				.leftJoin(classes, { id: subclasses.class_id })
+				.select({
+					subclassId: subclasses.id,
+					name: classes.name,
+					coinPrice: e.coalesce(subclasses.coin_price, classes.coin_price)
+				})
+		}).exec();
+
+ */

@@ -1,13 +1,22 @@
 {
   "name": "hediet-typed-sql",
-  "version": "0.0.1",
+  "version": "0.0.14",
   "description": "A fully typed sql builder. Works best with TypeScript an Visual Studio Code.",
   "main": "dist/src/index.js",
   "directories": {
     "test": "dist/test"
   },
+  "keywords": [
+    "sql",
+    "typed",
+    "type",
+    "builder",
+    "database",
+    "typescript"
+  ],
   "dependencies": {
-    "@types/pg": "^6.1.39"
+    "@types/pg": "^6.1.39",
+    "hediet-framework": "^1.1.0"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.40",
@@ -18,7 +27,7 @@
     "watch": "tsc --watch",
     "test": "mocha dist/test/**/*.js"
   },
-  "author": "",
+  "author": "Henning Dieterichs",
   "license": "ISC",
-  "types": "./dist/src/index.d.ts"
+  "types": "src/index.ts"
 }

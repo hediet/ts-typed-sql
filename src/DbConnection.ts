@@ -3,7 +3,7 @@ import { Query } from "./AST/Queries/Query";
 import { RetrievalQuery } from "./AST/Queries/RetrievalQuery";
 
 export interface SimpleDbQueryService {
-	exec<TColumns>(query: Query<TColumns>): Promise<TColumns[]>;
+	exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
 	exec<TColumns>(statement: SqlStatement): Promise<void>;
 }
 
@@ -14,58 +14,65 @@ export interface DbQueryService extends SimpleDbQueryService {
 export class DbQueryInterface {
 	constructor(protected readonly queryService: SimpleDbQueryService) { }
 
-	public exec<TColumns>(query: Query<TColumns>): Promise<TColumns[]>;
+	public exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
 	public exec<TColumns>(statement: SqlStatement): Promise<void>;
 	public exec<TColumns>(statement: SqlStatement): Promise<TColumns[]> | Promise<void> {
 		return this.queryService.exec(statement);
 	}
 
-	public async firstOrUndefined<TColumns>(query: RetrievalQuery<TColumns, any>): Promise<TColumns | undefined> {
-		const q = query.limit(1);
-		const rows = await this.exec(q);
+	public async values<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn][]> {
+		const rows = await this.exec(query);
+		return rows.map(r => r[query.singleColumn]);
+	}
+
+	public async firstOrUndefined<TColumns>(query: Query<TColumns, any>): Promise<TColumns | undefined> {
+		if (query instanceof RetrievalQuery)
+			query = query.limit(1);
+		const rows = await this.exec(query);
 		return rows[0];
 	}
 
-	public async first<TColumns>(query: RetrievalQuery<TColumns, any>): Promise<TColumns> {
+	public async first<TColumns>(query: Query<TColumns, any>): Promise<TColumns> {
 		const result = await this.firstOrUndefined(query);
 		if (!result) throw new Error("Expected at least one row.");
 		return result;
 	}
 
-	public async single<TColumns>(query: RetrievalQuery<TColumns, any>): Promise<TColumns> {
-		const q = query.limit(2);
-		const rows = await this.exec(q);
+	public async single<TColumns>(query: Query<TColumns, any>): Promise<TColumns> {
+		if (query instanceof RetrievalQuery)
+			query = query.limit(2);
+		const rows = await this.exec(query);
 		if (rows.length === 0) throw new Error("No row found.");
 		if (rows.length >= 2) throw new Error("More than one row returned.");
 		return rows[0];
 	}
 
-	public async firstOrUndefinedValue<TColumns, TColumn extends keyof TColumns>(query: RetrievalQuery<TColumns, TColumn>): Promise<TColumns[TColumn] | undefined> {
+	public async firstOrUndefinedValue<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn] | undefined> {
 		const row = await this.firstOrUndefined(query);
 		if (!row) return undefined;
 		return row[query.singleColumn];
 	}
 
-	public async firstValue<TColumns, TColumn extends keyof TColumns>(query: RetrievalQuery<TColumns, TColumn>): Promise<TColumns[TColumn]> {
+	public async firstValue<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn]> {
 		const row = await this.first(query);
 		return row[query.singleColumn];
 	}
 
-	public async singleValue<TColumns, TColumn extends keyof TColumns>(query: RetrievalQuery<TColumns, TColumn>): Promise<TColumns[TColumn]> {
+	public async singleValue<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn]> {
 		const row = await this.single(query);
 		return row[query.singleColumn];
 	}
 }
 
 export class TransactingQueryService extends DbQueryInterface {
-	private _isTransactionOpen: boolean;
+	private _isTransactionOpen: boolean = true;
 
 	public get isTransactionOpen(): boolean { return this._isTransactionOpen; }
 
-	public exec<TColumns>(query: Query<TColumns>): Promise<TColumns[]>;
+	public exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
 	public exec<TColumns>(statement: SqlStatement): Promise<void>;
 	public exec<TColumns>(statement: SqlStatement): Promise<TColumns[]> | Promise<void> {
-		if (!this._isTransactionOpen) throw new Error("Transaction has been closed.");
+		if (!this._isTransactionOpen) throw new Error(`Could not execute statement '${statement}': Transaction already has been either committed or rolled back.`);
 		return super.exec(statement);
 	}
 

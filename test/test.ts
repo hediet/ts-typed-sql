@@ -14,7 +14,7 @@ const contacts = table("contacts",
 		id: column<number>()
 	});
 
-function check<T2>(query: Query<T2>, expectedSql: string, args: any[] = []) {
+function check<T2>(query: Query<T2, any>, expectedSql: string, args: any[] = []) {
 	const generator = new PostgreSqlGenerator({ shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });
 	const sql = generator.toSql(query);
 

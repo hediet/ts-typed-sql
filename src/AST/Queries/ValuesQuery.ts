@@ -1,9 +1,8 @@
-import { RetrievalQuery } from '../..';
-
+import { MoreThanOneColumnSelected } from './Query';
 import { ColumnDescription } from "../ColumnDescription";
 import { ColumnsWithTypesToImplicit } from "../Table";
 import { FromItemCtor, QueryFromItem, FromItem } from "../FromFactor";
-import { MoreThanOneColumnSelected } from "./RetrievalQuery";
+import { RetrievalQuery } from "./RetrievalQuery";
 import { AsColumn } from "../Expressions";
 import { toObject } from "../../Helpers";
 

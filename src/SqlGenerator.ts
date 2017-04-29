@@ -2,7 +2,7 @@ import { ValuesQuery } from './AST/Queries/ValuesQuery';
 import { InsertQuery } from './AST/Queries/InsertQuery';
 import { UpdateQuery } from './AST/Queries/UpdateQuery';
 import { DeleteQuery } from './AST/Queries/DeleteQuery';
-import { SqlStatement } from './AST/SqlStatement';
+import { SqlStatement, CommitTransactionStatement, RollbackTransactionStatement, StartTransactionStatement } from './AST/SqlStatement';
 import {
     FromFactor,
     FromFactorAbstractConditionalJoin,
@@ -57,6 +57,10 @@ export abstract class SqlGenerator {
 		if (statement instanceof DeleteQuery) return this.transformDeleteQueryToSql(statement, context);
 		if (statement instanceof ValuesQuery) return this.transformValuesQueryToSql(statement, context);
 
+		if (statement instanceof StartTransactionStatement) return "BEGIN";
+		if (statement instanceof CommitTransactionStatement) return "COMMIT";
+		if (statement instanceof RollbackTransactionStatement) return "ROLLBACK";
+
 		throw new Error(`Unsupported query: ${statement}`);
 	}
 
@@ -82,7 +86,7 @@ export abstract class SqlGenerator {
 	}
 
 	protected transformValuesQueryToSql(query: ValuesQuery<any>, context: Context): string {
-		const first = query.values[0];
+		const first = query.values[0]; // todo exception
 		let sql = "VALUES ";
 
 		const expressionContext: ExpressionContext = { isColumnNameUnambigous: c => true, resolveNamedExpression: true, context };
@@ -94,23 +98,28 @@ export abstract class SqlGenerator {
 		return sql;
 	}
 
-	protected transformInsertQueryToSql(query: InsertQuery<any, any>, context: Context): string {
+	protected transformInsertQueryToSql(query: InsertQuery<any, any, any>, context: Context): string {
 		const data = query.getState();
 		let sql = `INSERT INTO ${this.referToFromItem(data.table)}`;
 
 		const expressionContext: ExpressionContext = { isColumnNameUnambigous: c => true, resolveNamedExpression: true, context };
 
 		if (Array.isArray(data.values)) {
-			const firstRow = data.values[0];
-			const columnNames = Object.keys(firstRow);
-
-			for (const selectedCol of columnNames) {
-				if (!(selectedCol in data.table.$columns))
-					throw new Error(`Column '${selectedCol}' does not exist on table '${data.table}'.`);
+			if (data.values.length === 0) {
+				sql += ` (SELECT null WHERE false)`;
 			}
+			else {
+				const firstRow = data.values[0];
+				const columnNames = Object.keys(firstRow);
 
-			sql += `(${columnNames.map(c => this.quoteColumnName(c)).join(", ")}) VALUES `;
-			sql += data.values.map(v => `(${columnNames.map(c => this.escapeValue(Exprs.val(v[c]), expressionContext)).join(", ")})`).join(", ");
+				for (const selectedCol of columnNames) {
+					if (!(selectedCol in data.table.$columns))
+						throw new Error(`Column '${selectedCol}' does not exist on table '${data.table}'.`);
+				}
+
+				sql += `(${columnNames.map(c => this.quoteColumnName(c)).join(", ")}) VALUES `;
+				sql += data.values.map(v => `(${columnNames.map(c => this.escapeValue(Exprs.val(v[c]), expressionContext)).join(", ")})`).join(", ");
+			}
 		}
 		else {
 			const s = data.values.getState();
@@ -132,7 +141,7 @@ export abstract class SqlGenerator {
 		return sql;
 	}
 
-	protected transformDeleteQueryToSql(query: DeleteQuery<any, any>, context: Context): string {
+	protected transformDeleteQueryToSql(query: DeleteQuery<any, any, any>, context: Context): string {
 		const data = query.getState();
 		let sql = `DELETE FROM ${this.referToFromItem(data.table)}`;
 		
@@ -152,7 +161,7 @@ export abstract class SqlGenerator {
 		return sql;
 	}
 
-	protected transformUpdateQueryToSql(query: UpdateQuery<any, any, any>, context: Context): string {
+	protected transformUpdateQueryToSql(query: UpdateQuery<any, any, any, any>, context: Context): string {
 		const data = query.getState();
 		let sql = `UPDATE ${this.referToFromItem(data.table)}`;
 		
@@ -353,10 +362,12 @@ export abstract class SqlGenerator {
 			return `(${this.transformToSql(e.query, context.context)})`;
 		}
 		if (e instanceof Exprs.IsInValuesExpression) {
+			if (e.values.length === 0)
+				return this.expressionToSql(Exprs.val(false), context, e.precedenceLevel);
 			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
 			return `${arg} IN (${e.values.map(v => this.expressionToSql(v, context)).join(", ")})`;
 		}
-		if (e instanceof Exprs.IsInExpression) {
+		if (e instanceof Exprs.IsInQueryExpression) {
 			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
 			return `${arg} IN (${this.transformToSql(e.query, context.context)})`;
 		}
@@ -367,6 +378,14 @@ export abstract class SqlGenerator {
 		if (e instanceof Exprs.NotExpression) {
 			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
 			return `NOT ${arg}`
+		}
+		if (e instanceof Exprs.IsNullExpression) {
+			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+			return `${arg} IS NULL`;
+		}
+		if (e instanceof Exprs.IsNotNullExpression) {
+			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+			return `${arg} IS NOT NULL`;
 		}
 		throw "not implemented";
 	}

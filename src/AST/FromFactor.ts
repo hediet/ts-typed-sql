@@ -77,6 +77,21 @@ export abstract class FromItem<TColumns extends ImplicitColumns> extends FromFac
 		for (const s of setters) s(result);
 		return result;
 	}
+
+	public asNullable(): FromItemCtor<{ [TKey in keyof TColumns]: TColumns[TKey]|null }> {
+		return this as any;
+	}
+
+	/* todo
+	public asExpression(): Expression<Record<TColumns>> {
+		
+	}
+	*/
+}
+
+export interface Record<T> {
+	__t: T;
+	textRepresentation: string;
 }
 
 export function isCastToColumns(fromItem: FromItem<any>): boolean {
@@ -96,7 +111,7 @@ export class NamedFromItem<TColumns extends ImplicitColumns> extends FromItem<TC
 }
 
 export class QueryFromItem<TColumns> extends FromItem<TColumns> {
-	constructor(public readonly $name: string, columns: ImplicitColumnsToColumns<TColumns>, public readonly query: Query<TColumns>, castToColumns: boolean) {
+	constructor(public readonly $name: string, columns: ImplicitColumnsToColumns<TColumns>, public readonly query: Query<TColumns, any>, castToColumns: boolean) {
 		super(columns, castToColumns);
 	}
 }

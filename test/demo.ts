@@ -1,5 +1,4 @@
-import { values } from '../src/AST/Queries/ValuesQuery';
-import { select, from, table, column, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, FromItem, ImplicitColumns } from "../src/index";
+import { select, from, table, column, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, FromItem, ImplicitColumns, values } from "../src/index";
 import pg = require("pg");
 
 const contacts = table({ name: "contacts", schema: "public" },
@@ -18,6 +17,7 @@ const pool = new pg.Pool({
 	password: "FXLjrQ0"
 });
 
+
 (async function () {
 	try {
 		const queryService = new PostgreQueryService(pool, { shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });
@@ -27,6 +27,7 @@ const pool = new pg.Pool({
 		});
 		const dbCon = new DbConnection(queryService);
 
+
 /*
 		const vals = values([{ foo: 1, bar: 2 }, { foo: 10, bar: 100 }]).as("vals");
 		console.log(await dbCon.exec(
@@ -35,7 +36,7 @@ const pool = new pg.Pool({
 		return;*/
 
 		await dbCon.exec(deleteFrom(contacts).where(val(true)));
-		await dbCon.exec(insertInto(contacts).values(
+		await dbCon.exec(insertInto(contacts).value(
 			{ firstname: "Hoster", lastname: "Tully", father_id: null, mother_id: null, id: 0 },
 			{ firstname: "Catelyn", lastname: "Tully", father_id: 0, mother_id: null, id: 1 },
 			{ firstname: "Lysa", lastname: "Tully", father_id: 0, mother_id: null, id: 2 },

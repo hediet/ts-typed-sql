@@ -1,5 +1,5 @@
-import { Ordering } from "./ordering";
-import { FromItem, ImplicitColumns, getColumn } from "./FromFactor";
+import { Ordering } from "./Ordering";
+import { FromItem, ImplicitColumns, getColumn, Record } from "./FromFactor";
 import { RetrievalQuery } from "./Queries/RetrievalQuery";
 import { Table } from "./Table";
 
@@ -10,7 +10,8 @@ export abstract class Expression<T> {
 
 	public get precedenceLevel(): number { return 0; }
 
-	public cast<T>(): Expression<T> { return this as any; }
+	public cast<T2>(): Expression<T2> { return this as any; }
+	public narrow<T2 extends T>(): Expression<T2> { return this as any; }
 
 	public as<TName extends string>(name: TName): NamedExpression<TName, T> {
 		return new NamedExpressionWrapper<TName, T>(name, this); }
@@ -39,9 +40,9 @@ export abstract class Expression<T> {
 
 	public not(this: Expression<boolean>): Expression<boolean> { return new NotExpression(this); }
 
-	public isInValues(...values: ExpressionOrValue<T>[]): Expression<boolean> { return new IsInValuesExpression(this, values.map(v => normalize(v))); }
-	public isIn<TColumns, TSingleColumn extends keyof TColumns>(this: Expression<TColumns[TSingleColumn]>,
-		values: RetrievalQuery<TColumns, TSingleColumn>): Expression<boolean> { return new IsInExpression(this, values); }
+	public isIn(values: ExpressionOrValue<T>[]): Expression<boolean> { return new IsInValuesExpression(this, values.map(v => normalize(v))); }
+	public isInQuery<TColumns, TSingleColumn extends keyof TColumns>(this: Expression<TColumns[TSingleColumn]>,
+		values: RetrievalQuery<TColumns, TSingleColumn>): Expression<boolean> { return new IsInQueryExpression(this, values); }
 	
 	public minus(this: Expression<number>, other: ExpressionOrValue<number>): Expression<number> {
 		return new SubtractionExpression(this, normalize(other)); }
@@ -62,6 +63,8 @@ export abstract class Expression<T> {
 
 	public asc(): Ordering<Expression<T>> { return { asc: this } };
 	public desc(): Ordering<Expression<T>> { return { desc: this } };
+
+	// todo: public toJson<TColumns>(this: Expression<Record<TColumns>>): Expression<Json<TColumns>> {}
 }
 
 export function normalize<T>(expr: ExpressionOrValue<T>): Expression<T> {
@@ -83,6 +86,10 @@ export function and(...expressions: (Expression<boolean> | undefined)[]): Expres
 
 export function concat(...expressions: ExpressionOrValue<string>[]): Expression<string> {
 	return new KnownFunctionInvocation("concat", expressions.map(e => normalize(e)));
+}
+
+export function coalesce<T>(...expressions: ExpressionOrValue<T>[]): Expression<T> {
+	return new KnownFunctionInvocation("coalesce", expressions.map(e => normalize(e)));
 }
 
 export function val<T>(value: T, preferEscaping: boolean = false) { return new ValueExpression(value, preferEscaping); }
@@ -187,7 +194,15 @@ export abstract class BinaryOperatorExpression<TLeft, TRight, TResult> extends E
 	public abstract get operator(): string;
 }
 
-function ConcreteBinaryExpression<TLeft, TRight, TResult>(symbol: string, precedenceLevel: number) {
+export interface ConcreteBinaryExpression<TLeft, TRight, TResult> extends BinaryOperatorExpression<TLeft, TRight, TResult> {
+	operator: string;
+	precedenceLevel: number;
+}
+export interface ConcreteBinaryExpressionStatic<TLeft, TRight, TResult> {
+	new (...args: any[]): ConcreteBinaryExpression<TLeft, TRight, TResult>;
+}
+
+export function ConcreteBinaryExpression<TLeft, TRight, TResult>(symbol: string, precedenceLevel: number): ConcreteBinaryExpressionStatic<TLeft, TRight, TResult> {
 	return class extends BinaryOperatorExpression<TLeft, TRight, TResult> {
 		public get operator(): string { return symbol; }
 		public get precedenceLevel(): number { return precedenceLevel; }
@@ -224,7 +239,7 @@ export class IsInValuesExpression<T> extends Expression<boolean> {
 	constructor(public readonly argument: Expression<T>, public readonly values: Expression<T>[]) { super(); }
 }
 
-export class IsInExpression<T> extends Expression<boolean> {
+export class IsInQueryExpression<T> extends Expression<boolean> {
 	public get precedenceLevel() { return 7; }
 
 	constructor(public readonly argument: Expression<T>, public readonly query: RetrievalQuery<any, any>) { super(); }
@@ -249,5 +264,4 @@ export class KnownFunctionInvocation extends Expression<any> {
 }
 
 export class DefaultExpression extends Expression<any> {}
-
 

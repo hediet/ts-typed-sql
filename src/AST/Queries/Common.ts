@@ -25,7 +25,7 @@ export function handleSelect<TFromTblCols>(
 		fromItem: FromItem<TFromTblCols>|undefined,
 		resultColumns: { [exprName: string]: NamedExpression<any, any> },
 		selectedExpressions: (NamedExpression<any, any>|AllExpression<any>)[],
-		...args: ((keyof TFromTblCols)|NmdExpr|AllExpression<any>)[]) {
+		args: ((keyof TFromTblCols)|NmdExpr|AllExpression<any>)[]) {
 
 	const normalizedExpressions = args.map(arg => resolveColumnReference<NmdExpr|AllExpression<any>, TFromTblCols>(fromItem, arg));
 

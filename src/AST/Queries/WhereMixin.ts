@@ -3,6 +3,7 @@ import { Query } from "./Query";
 import { MapExpressionOrValue, Expression, and, toCondition } from "../Expressions";
 import { Constructable } from "./Common";
 
+
 export function WhereMixin<BC extends Constructable<object>, TFromTblCols>(Base: BC) {
 	return class WhereMixin extends Base {
 		protected _whereCondition: Expression<boolean> | undefined;

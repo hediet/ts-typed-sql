@@ -6,27 +6,15 @@ import {
 	FromItem, FromFactor, ImplicitColumns, ImplicitColumnsToColumns,
 	FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin, FromFactorCrossJoin
 } from "../FromFactor";
-import { NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn, RetrievalQuery } from "./RetrievalQuery";
+import { RetrievalQuery } from "./RetrievalQuery";
+import { NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
 import { Ordering, isOrderingAsc, isOrderingDesc } from "../Ordering";
 import { Simplify, NmdExpr, NmdExprToImplctColumn, handleSelect, resolveColumnReference, Constructable } from "./Common";
 import { JoinMixin } from "./JoinMixin";
 import { WhereMixin } from "./WhereMixin";
+import { secondWithTypeOfFirst } from "../../Helpers";
 
-export function from<TTableColumns>(table: FromItem<TTableColumns>) {
-	const result = new SelectQuery<{}, {}, NoColumnsSelected>();
-	return result.from(table);
-}
-
-let q: SelectQuery<{}, {}, NoColumnsSelected>;
-export const select: typeof q.select = function (...args: any[]): any {
-	const result = new SelectQuery<{}, {}, NoColumnsSelected>();
-	return result.select.call(result, ...args);
-}
-
-export class SelectQuery<
-	TSelectedCols extends ImplicitColumns,
-	TFromTblCols,
-	TSingleColumn extends SingleColumn<TSelectedCols>>
+export class SelectQuery<TSelectedCols extends ImplicitColumns, TFromTblCols extends ImplicitColumns, TSingleColumn extends SingleColumn<TSelectedCols>>
 	extends JoinMixin(
 		WhereMixin<Constructable<RetrievalQuery<TSelectedCols, TSingleColumn>>, TFromTblCols>(
 			RetrievalQuery))
@@ -34,8 +22,6 @@ export class SelectQuery<
 	private _orderBys: Ordering<Expression<any>>[] = [];
 	private _havingCondition: Expression<boolean> | undefined;
 	private _groupBys: Expression<any>[] = [];
-
-	private singleColumnName: TSingleColumn;
 
 	public getState() {
 		return Object.assign({
@@ -48,46 +34,50 @@ export class SelectQuery<
 	}
 
 	public from<TTableColumns>(table: FromItem<TTableColumns>):
-			SelectQuery<TSelectedCols, TTableColumns, TSingleColumn> {
+		SelectQuery<TSelectedCols, TTableColumns, TSingleColumn> {
 		this._from = FromFactor.crossJoin(this._from, table);
 		this.lastFromItem = table as any;
 		return this as any;
 	}
 
-	/**
-	 * Selects all columns from the given table.
-	 */
-	public select<T extends ImplicitColumns>(table: AllExpression<T>)
-		: SelectQuery<Simplify<TSelectedCols & {[TName in keyof T]: T[TName]}>, TFromTblCols, MoreThanOneColumnSelected>;
+	/** Selects all columns from the given table. */
+	public select<T extends ImplicitColumns>(table: AllExpression<T>): SelectQuery<Simplify<TSelectedCols & {[TName in keyof T]: T[TName]}>, TFromTblCols, MoreThanOneColumnSelected>;
 
-	/*
-	 * Selects a single column as first column.
-	 */
-	public select<T1 extends NmdExpr>(this: SelectQuery<TSelectedCols, TFromTblCols, NoColumnsSelected> | void, expr1: T1)
-		: SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1>>, TFromTblCols, NamedExpressionNameOf<T1>>;
+	/** Selects a single named expression. */
+	public select<T1 extends NmdExpr>(this: SelectQuery<TSelectedCols, TFromTblCols, NoColumnsSelected> | void, expr1: T1): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1>>, TFromTblCols, NamedExpressionNameOf<T1>>;
 
-	public select<T1 extends NmdExpr>(expr1: T1)
-		: SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1>>, TFromTblCols, MoreThanOneColumnSelected>;
-	public select<T1 extends NmdExpr, T2 extends NmdExpr>(expr1: T1, expr2: T2)
-		: SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2>>, TFromTblCols, MoreThanOneColumnSelected>;
-	public select<T1 extends NmdExpr, T2 extends NmdExpr, T3 extends NmdExpr>(expr1: T1, expr2: T2, expr3: T3)
-		: SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2> & NmdExprToImplctColumn<T3>>, TFromTblCols, MoreThanOneColumnSelected>;
-	/**
-	 * Selects a single column as first column.
-	 */
-	public select<TColumnName extends keyof TFromTblCols>(this: SelectQuery<TSelectedCols, TFromTblCols, NoColumnsSelected>, column1: TColumnName)
-		: SelectQuery<Simplify<TSelectedCols & {[TName in TColumnName]: TFromTblCols[TColumnName]}>, TFromTblCols, TColumnName>;
+	/** Selects 1 named expressions. */
+	public select<T1 extends NmdExpr>(expr1: T1): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1>>, TFromTblCols, MoreThanOneColumnSelected>;
 
-	/**
-	 * Selects given columns from the current table.
-	 */
-	public select<TColumnNames extends keyof TFromTblCols>(...columns: TColumnNames[])
-		: SelectQuery<Simplify<TSelectedCols & {[TName in TColumnNames]: TFromTblCols[TColumnNames]}>, TFromTblCols, MoreThanOneColumnSelected>;
+	/** Selects 2 named expressions. */
+	public select<T1 extends NmdExpr, T2 extends NmdExpr>(expr1: T1, expr2: T2): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2>>, TFromTblCols, MoreThanOneColumnSelected>;
+
+	/** Selects 3 named expressions. */
+	public select<T1 extends NmdExpr, T2 extends NmdExpr, T3 extends NmdExpr>(expr1: T1, expr2: T2, expr3: T3): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2> & NmdExprToImplctColumn<T3>>, TFromTblCols, MoreThanOneColumnSelected>;
+
+	/** Selects 4 named expressions. */
+	public select<T1 extends NmdExpr, T2 extends NmdExpr, T3 extends NmdExpr, T4 extends NmdExpr>(expr1: T1, expr2: T2, expr3: T3, expr4: T4): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2> & NmdExprToImplctColumn<T3> & NmdExprToImplctColumn<T4>>, TFromTblCols, MoreThanOneColumnSelected>;
+
+	/** Selects 5 named expressions. */
+	public select<T1 extends NmdExpr, T2 extends NmdExpr, T3 extends NmdExpr, T4 extends NmdExpr, T5 extends NmdExpr>(expr1: T1, expr2: T2, expr3: T3, expr4: T4, expr5: T5): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2> & NmdExprToImplctColumn<T3> & NmdExprToImplctColumn<T4> & NmdExprToImplctColumn<T5>>, TFromTblCols, MoreThanOneColumnSelected>;
+
+	/** Selects 6 named expressions. */
+	public select<T1 extends NmdExpr, T2 extends NmdExpr, T3 extends NmdExpr, T4 extends NmdExpr, T5 extends NmdExpr, T6 extends NmdExpr>(expr1: T1, expr2: T2, expr3: T3, expr4: T4, expr5: T5, expr6: T6): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2> & NmdExprToImplctColumn<T3> & NmdExprToImplctColumn<T4> & NmdExprToImplctColumn<T5> & NmdExprToImplctColumn<T6>>, TFromTblCols, MoreThanOneColumnSelected>;
+
+	/** Selects 7 named expressions. */
+	public select<T1 extends NmdExpr, T2 extends NmdExpr, T3 extends NmdExpr, T4 extends NmdExpr, T5 extends NmdExpr, T6 extends NmdExpr, T7 extends NmdExpr>(expr1: T1, expr2: T2, expr3: T3, expr4: T4, expr5: T5, expr6: T6, expr7: T7): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2> & NmdExprToImplctColumn<T3> & NmdExprToImplctColumn<T4> & NmdExprToImplctColumn<T5> & NmdExprToImplctColumn<T6> & NmdExprToImplctColumn<T7>>, TFromTblCols, MoreThanOneColumnSelected>;
+
+	/** Selects 8 named expressions. */
+	public select<T1 extends NmdExpr, T2 extends NmdExpr, T3 extends NmdExpr, T4 extends NmdExpr, T5 extends NmdExpr, T6 extends NmdExpr, T7 extends NmdExpr, T8 extends NmdExpr>(expr1: T1, expr2: T2, expr3: T3, expr4: T4, expr5: T5, expr6: T6, expr7: T7, expr8: T8): SelectQuery<Simplify<TSelectedCols & NmdExprToImplctColumn<T1> & NmdExprToImplctColumn<T2> & NmdExprToImplctColumn<T3> & NmdExprToImplctColumn<T4> & NmdExprToImplctColumn<T5> & NmdExprToImplctColumn<T6> & NmdExprToImplctColumn<T7> & NmdExprToImplctColumn<T8>>, TFromTblCols, MoreThanOneColumnSelected>;
+
+	/** Selects a single column that is currently in scope. */
+	public select<TColumnName extends keyof TFromTblCols>(this: SelectQuery<TSelectedCols, TFromTblCols, NoColumnsSelected>, column1: TColumnName): SelectQuery<Simplify<TSelectedCols & {[TName in TColumnName]: TFromTblCols[TName]}>, TFromTblCols, TColumnName>;
+
+	/** Selects columns that are currently in scope. */
+	public select<TColumnNames extends keyof TFromTblCols>(...columns: TColumnNames[]): SelectQuery<Simplify<TSelectedCols & {[TName in TColumnNames]: TFromTblCols[TName]}>, TFromTblCols, MoreThanOneColumnSelected>;
+
 	public select(...args: ((keyof TFromTblCols) | NmdExpr | AllExpression<any>)[]): any {
-		handleSelect(this.lastFromItem, this.columns as any, this.selectedColumns, ...args);
-		const first = this.selectedColumns[0];
-		if (this.selectedColumns.length === 1 && !(first instanceof AllExpression))
-			Object.assign(this, { singleColumn: first.name });
+		handleSelect(this.lastFromItem, this.columns as any, this.selectedColumns, args);
 		return this;
 	}
 
@@ -151,3 +141,13 @@ export class SelectQuery<
 		return this;
 	}
 }
+
+export function from<TTableColumns>(table: FromItem<TTableColumns>) {
+	const result = new SelectQuery<{}, {}, NoColumnsSelected>();
+	return result.from(table);
+}
+
+export const select = secondWithTypeOfFirst(new SelectQuery<{}, {}, NoColumnsSelected>().select, function (...args: any[]): any {
+	const result = new SelectQuery<{}, {}, NoColumnsSelected>();
+	return result.select.call(result, ...args);
+});

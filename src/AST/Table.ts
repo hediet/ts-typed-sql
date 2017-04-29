@@ -15,7 +15,7 @@ export class Table<TRequiredColumns extends ImplicitColumns, TOptionalColumns ex
 
 	constructor(public readonly $name: TableName, requiredColumns: ImplicitColumnsToColumns<TRequiredColumns>, 
 			optionalColumns: ImplicitColumnsToColumns<TOptionalColumns>) {
-		super(Object.assign({}, requiredColumns, optionalColumns));
+		super(Object.assign({}, requiredColumns, optionalColumns), false);
 
 		this.$requiredColumns = requiredColumns;
 		this.$optionalColumns = optionalColumns;
@@ -33,10 +33,10 @@ export class Table<TRequiredColumns extends ImplicitColumns, TOptionalColumns ex
 export type TableRequiredColumns<TTable extends any> = ColumnsToImplicit<TTable["$requiredColumns"]>;
 export type TableOptionalColumns<TTable extends any> = ColumnsToImplicit<TTable["$optionalColumns"]>;
 
-type TableCtor<TRequiredColumns extends ImplicitColumns, TOptionalColumns extends ImplicitColumns> 
+export type TableCtor<TRequiredColumns extends ImplicitColumns, TOptionalColumns extends ImplicitColumns> 
 	= Table<TRequiredColumns, TOptionalColumns> & ImplicitColumnsToColumns<TRequiredColumns & TOptionalColumns>;
 
-interface ColumnDescriptions { [columnName: string]: ColumnDescription<any> }
+export interface ColumnDescriptions { [columnName: string]: ColumnDescription<any> }
 
 export type ColumnsWithTypesToImplicit<TColumns extends ColumnDescriptions>
 	= { [TName in keyof TColumns]: TypeOfColumnDescription<TColumns[TName]> };

@@ -8,3 +8,7 @@ export function toObject<T, K, V>(item: T[], keySelector: (item: T) => K, valueS
 	}
 	return o;
 }
+
+export function secondWithTypeOfFirst<T1>(t1: T1, t2: any): T1 {
+	return t2;
+}

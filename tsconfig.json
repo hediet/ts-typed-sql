@@ -14,7 +14,7 @@
 		"experimentalDecorators": true,
 		"noImplicitUseStrict": true,
 		"outDir": "dist",
-		"declaration": true
+		"declaration": false
 	},
 	"include": [
 		"./src/**/*",

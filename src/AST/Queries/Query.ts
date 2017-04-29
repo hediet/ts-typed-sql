@@ -6,9 +6,20 @@ import { ColumnsWithTypesToImplicit } from "../Table";
 export type ImplicitColumnsToNmdExprs<TColumns> =
 	{ [TName in keyof TColumns]: NamedExpression<TName, TColumns[TName]> };
 
-export class Query<TReturningColumns> {
+export interface NoColumnsSelected { _brand: "NoColumnSelected" }
+export interface MoreThanOneColumnSelected { _brand: "MoreThanOneColumnSelected" }
+export type SingleColumn<TSelectedCols> = NoColumnsSelected|(keyof TSelectedCols)|MoreThanOneColumnSelected;
+
+export class Query<TReturningColumns, TSingleColumn extends SingleColumn<TReturningColumns>> {
 	protected columns: ImplicitColumnsToNmdExprs<TReturningColumns> = {} as any;
 	protected selectedColumns: (NamedExpression<any, any>|AllExpression<any>)[] = [];
+
+	public get singleColumn(): TSingleColumn {
+		const first = this.selectedColumns[0];
+		if (this.selectedColumns.length === 1 && !(first instanceof AllExpression))
+			return first.name;
+		return undefined as any;
+	}
 
 	private _isWithRecursive: boolean = false;
 	private _withItems: FromItem<any>[] = [];

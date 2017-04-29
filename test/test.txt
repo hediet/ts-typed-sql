@@ -9,37 +9,21 @@ import from = s.from;
 import { ImplicitColumns } from "../src";
 
 
-const asset_classes = table({ name: "asset_classes", schema: "steam" },
-	{
-		market_hash_name: column<string>(),
-		name: column<string>(),
-		wear: column<string | null>(),
-		coin_price: column<number | null>(),
-		updated: column<Date>(),
-		update_price_automatically: column<boolean>(),
-		can_deposit: column<boolean>(),
-		requires_withdraw_confirmation: column<boolean>()
-	},
-	{ id: column<number>() }
-);
+const off = from(sides)
+	.innerJoin(users).on({ id: sides.user_id })
+	.select(sides.$all)
+	.select(users.toExpression().as("user"))
+	.as("off");
 
-const asset_subclasses = table({ name: "asset_subclasses", schema: "steam" },
-	{
-		class_id: asset_classes.id,
-		image_link_suffix: column<string>(),
-		phase: column<string | null>(),
-		coin_price: column<number | null>()
-	},
-	{ id: column<number>() }
-);
+const row = from(flips)
+	.innerJoin(off).on({ id: flips.offer })
+	.select(flips.$all)
+	.select(off.toExpression().as("off"))
+	.as("row");
 
-const bot_asset_inventories = table({ name: "bot_asset_inventories", schema: "steam" }, {
-	assetid: column<string>(),
-	subclass_id: asset_subclasses.id,
-	owning_bot_id: column<number>(),
-	received_in_trade: column<string>(),
-	sent_in_trade: column<string>()
-});
+from(row).select(row.asExpression().toJson().as("result"))
+
+
 
 
 

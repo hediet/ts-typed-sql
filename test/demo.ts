@@ -1,4 +1,4 @@
-import { select, from, table, column, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, FromItem, ImplicitColumns, values } from "../src/index";
+import { select, from, table, column, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, FromItem, ImplicitColumns, values, FromItemToImplicitColumns } from "../src/index";
 import pg = require("pg");
 
 const contacts = table({ name: "contacts", schema: "public" },
@@ -11,11 +11,14 @@ const contacts = table({ name: "contacts", schema: "public" },
 	{ id: column<number>() }
 );
 
+let x: FromItemToImplicitColumns<typeof contacts>;
+
 const pool = new pg.Pool({
 	database: "postgres",
 	user: "postgres",
 	password: "FXLjrQ0"
 });
+
 
 
 (async function () {

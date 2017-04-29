@@ -54,6 +54,8 @@ export class FromFactorFullJoin extends FromFactorAbstractConditionalJoin { publ
 export class FromFactorInnerJoin extends FromFactorAbstractConditionalJoin { public getType() { return "inner"; } };
 export class FromFactorCrossJoin extends FromFactorAbstractJoin { public getType() { return "cross"; } };
 
+export type FromItemToImplicitColumns<TFromItem extends FromItem<any>> =
+	{ [TName in keyof TFromItem["$columns"] ]: ExpressionTypeOf<TFromItem["$columns"][TName]> } ;
 
 export abstract class FromItem<TColumns extends ImplicitColumns> extends FromFactor {
 	public readonly $columns: ImplicitColumnsToColumns<TColumns>;

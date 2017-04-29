@@ -20,7 +20,6 @@ const pool = new pg.Pool({
 });
 
 
-
 (async function () {
 	try {
 		const queryService = new PostgreQueryService(pool, { shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });

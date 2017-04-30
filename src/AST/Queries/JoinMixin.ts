@@ -2,11 +2,16 @@ import { Expression, ExpressionOrValue, ExpressionTypeOf, toCondition, MapExpres
 import { FromItem, FromFactor, FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin } from "../FromFactor";
 import { Constructable } from "./Common";
 
-type FromItemToImplicitColumns<TFromItem extends FromItem<any>> =
-	{ [TName in keyof TFromItem["$columns"] ]: ExpressionTypeOf<TFromItem["$columns"][TName]> } ;
+export interface JoinMixinInstance {
+	fullJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
 
-export function JoinMixin<BC extends Constructable<object>>(Base: BC) {
-	return class JoinMixin extends Base {
+	innerJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+
+	leftJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+}
+
+export function JoinMixin<BC extends Constructable<object>>(Base: BC): Constructable<JoinMixinInstance> & BC {
+	return class extends Base {
 		protected _from: FromFactor | undefined = undefined;
 
 		private curriedOnJoin(ctor: new (fromFactor: FromFactor, joined: FromFactor, condition: Expression<boolean>) => FromFactor) {

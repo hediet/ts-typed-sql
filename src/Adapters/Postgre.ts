@@ -46,15 +46,19 @@ export class PostgreQueryService implements DbQueryService {
 	}
 
 	public getExclusiveQueryService<T>(scope: (service: SimpleDbQueryService) => Promise<T>): Promise<T> {
-		return new Promise((res, rej) => this.pool.connect(async (err, client, done) => {
+		return new Promise((res, rej) => this.pool.connect((err, client, done) => {
 			if (err) { rej(err); return; }
 
 			const service = new this.PostgreExclusiveQueryService(client, this);
-			const result = await scope(service);
-			
-			done();
-
-			res(result);
+			scope(service)
+				.then(result => {
+					done();
+					res(result);
+				})
+				.catch(err => {
+					done();
+					rej(err);
+				});
 		}));
 	}
 

@@ -1,5 +1,5 @@
 import { Ordering } from "./Ordering";
-import { FromItem, ImplicitColumns, getColumn, Record } from "./FromFactor";
+import { FromItem, ImplicitColumns, getColumn } from "./FromFactor";
 import { RetrievalQuery } from "./Queries/RetrievalQuery";
 import { Table } from "./Table";
 

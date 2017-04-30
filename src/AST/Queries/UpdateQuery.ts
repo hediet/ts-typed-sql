@@ -6,14 +6,18 @@ import { Table } from "../Table";
 import { Expression, ExpressionOrValue, AllExpression, toCondition, and, normalize, NamedExpression, NamedExpressionNameOf } from "../Expressions";
 import { Query, SingleColumn, MoreThanOneColumnSelected, NoColumnsSelected } from './Query';
 import { NmdExpr, Simplify, NmdExprToImplctColumn, resolveColumnReference, handleSelect, Constructable } from "./Common";
-import { JoinMixin } from "./JoinMixin";
-import { WhereMixin } from "./WhereMixin";
+import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
+import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
 
 export function update<T extends ImplicitColumns>(table: FromItem<T> & Table<any, any>): UpdateQuery<T, {}, T, NoColumnsSelected> {
 	return new UpdateQuery<T, {}, T, NoColumnsSelected>(table);
 }
 export class UpdateQuery<TUpdatedColumns extends ImplicitColumns, TReturningColumns extends ImplicitColumns, TFromTblCols extends ImplicitColumns, TSingleColumn extends SingleColumn<TReturningColumns>>
 	extends JoinMixin(WhereMixin<Constructable<Query<TReturningColumns, TSingleColumn>>, TUpdatedColumns>(Query)) {
+
+	protected _from: FromFactor | undefined = undefined;
+	protected _whereCondition: Expression<boolean> | undefined;
+	protected lastFromItem: FromItem<TFromTblCols> | undefined;
 
 	private readonly _table: FromItem<TUpdatedColumns> & Table<any, any>;
 

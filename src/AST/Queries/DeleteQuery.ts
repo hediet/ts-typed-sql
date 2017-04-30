@@ -3,14 +3,18 @@ import { Table } from "../Table";
 import { ExpressionOrValue, AllExpression, NamedExpression, Expression, NamedExpressionNameOf } from "../Expressions";
 import { Query, NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
 import { NmdExpr, Simplify, NmdExprToImplctColumn, resolveColumnReference, handleSelect, Constructable } from "./Common";
-import { JoinMixin } from "./JoinMixin";
-import { WhereMixin } from "./WhereMixin";
+import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
+import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
 export function deleteFrom<T extends ImplicitColumns>(table: FromItem<T> & Table<any, any>): DeleteQuery<T, {}, NoColumnsSelected> {
 	return new DeleteQuery<T, {}, NoColumnsSelected>(table);
 }
 
 export class DeleteQuery<TColumns extends ImplicitColumns, TReturningColumns extends ImplicitColumns, TSingleColumn extends SingleColumn<TReturningColumns>>
 	extends JoinMixin(WhereMixin<Constructable<Query<TReturningColumns, TSingleColumn>>, TColumns>(Query)) {
+
+	protected _from: FromFactor | undefined = undefined;
+	protected _whereCondition: Expression<boolean> | undefined;
+	protected lastFromItem: FromItem<TColumns> | undefined;
 
 	constructor(private readonly table: FromItem<any> & Table<any, any>) {
 		super();

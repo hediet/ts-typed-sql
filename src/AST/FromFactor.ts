@@ -91,11 +91,6 @@ export abstract class FromItem<TColumns extends ImplicitColumns> extends FromFac
 	*/
 }
 
-export interface Record<T> {
-	__t: T;
-	textRepresentation: string;
-}
-
 export function isCastToColumns(fromItem: FromItem<any>): boolean {
 	return fromItem["castToColumns"];
 }

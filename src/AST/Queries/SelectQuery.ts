@@ -10,8 +10,8 @@ import { RetrievalQuery } from "./RetrievalQuery";
 import { NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
 import { Ordering, isOrderingAsc, isOrderingDesc } from "../Ordering";
 import { Simplify, NmdExpr, NmdExprToImplctColumn, handleSelect, resolveColumnReference, Constructable } from "./Common";
-import { JoinMixin } from "./JoinMixin";
-import { WhereMixin } from "./WhereMixin";
+import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
+import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
 import { secondWithTypeOfFirst } from "../../Helpers";
 
 export class SelectQuery<TSelectedCols extends ImplicitColumns, TFromTblCols extends ImplicitColumns, TSingleColumn extends SingleColumn<TSelectedCols>>
@@ -19,6 +19,10 @@ export class SelectQuery<TSelectedCols extends ImplicitColumns, TFromTblCols ext
 		WhereMixin<Constructable<RetrievalQuery<TSelectedCols, TSingleColumn>>, TFromTblCols>(
 			RetrievalQuery))
 {
+	protected _from: FromFactor | undefined = undefined;
+	protected _whereCondition: Expression<boolean> | undefined;
+	protected lastFromItem: FromItem<TFromTblCols> | undefined;
+
 	private _orderBys: Ordering<Expression<any>>[] = [];
 	private _havingCondition: Expression<boolean> | undefined;
 	private _groupBys: Expression<any>[] = [];

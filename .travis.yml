@@ -10,7 +10,8 @@ branches:
     - gh-pages
 
 script:
-  - npm run cover
+  - yarn run build
+  - yarn run cover
 
 after_script:
   - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js

@@ -30,6 +30,7 @@
     "typescript": "^2.2.1"
   },
   "scripts": {
+    "build": "tsc",
     "watch": "tsc --watch",
     "test": "mocha dist/test/**/*.js",
     "cover": "istanbul cover \"./node_modules/mocha/bin/_mocha\" dist/test/**/*.js"

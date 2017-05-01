@@ -20,7 +20,9 @@
   },
   "devDependencies": {
     "@types/mocha": "^2.2.40",
+    "@types/pg": "^6.1.39",
     "mocha": "^3.2.0",
+    "pg": "^6.1.5",
     "typescript": "^2.2.1"
   },
   "scripts": {
@@ -28,6 +30,10 @@
     "test": "mocha dist/test/**/*.js"
   },
   "author": "Henning Dieterichs",
-  "license": "ISC",
-  "types": "src/index.ts"
+  "license": "MIT",
+  "types": "src/index.ts",
+  "files": [
+    "./dist/src"
+  ],
+  "repository": "hediet/ts-typed-sql"
 }

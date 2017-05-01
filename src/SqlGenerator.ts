@@ -270,7 +270,7 @@ export abstract class SqlGenerator {
 
 			let sql = `${oldName} AS ${newName}`;
 			if (isCastToColumns(f))
-				sql += ` (${Object.keys(f.$columns).join(", ")})`;
+				sql += `(${Object.keys(f.$columns).join(", ")})`;
 			return sql;
 		}
 		else if (f instanceof QueryFromItem) {
@@ -278,7 +278,7 @@ export abstract class SqlGenerator {
 
 			let sql = `(${this.transformToSql(f.query, context.context)}) AS ${newName}`;
 			if (isCastToColumns(f))
-				sql += ` (${Object.keys(f.$columns).join(", ")})`;
+				sql += `(${Object.keys(f.$columns).join(", ")})`;
 			return sql;
 		}
 		else if (f instanceof FromFactorAbstractJoin) {

@@ -32,7 +32,7 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "test": "mocha dist/test/**/*.js",
-    "cover": "nyc --all yarn test"
+    "cover": "nyc --all --reporter lcov --reporter text-summary yarn test"
   },
   "author": "Henning Dieterichs",
   "license": "MIT",

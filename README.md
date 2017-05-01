@@ -1,5 +1,8 @@
 # hediet-typed-sql
 
+[![Build Status](https://travis-ci.org/hediet/ts-typed-sql.svg?branch=master)](https://travis-ci.org/hediet/ts-typed-sql)
+[![Coverage Status](https://coveralls.io/repos/github/hediet/ts-typed-sql/badge.svg?branch=master)](https://coveralls.io/github/hediet/ts-typed-sql?branch=master)
+
 A fully typed sql builder. Works best with TypeScript an Visual Studio Code.
 Currently only has support for PostgreSql, however, it should be very easy to implement SQL Generators for other SQL dialects.
 

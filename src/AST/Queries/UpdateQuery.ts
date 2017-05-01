@@ -13,7 +13,7 @@ export function update<T extends ImplicitColumns>(table: FromItem<T> & Table<any
 	return new UpdateQuery<T, {}, T, NoColumnsSelected>(table);
 }
 export class UpdateQuery<TUpdatedColumns extends ImplicitColumns, TReturningColumns extends ImplicitColumns, TFromTblCols extends ImplicitColumns, TSingleColumn extends SingleColumn<TReturningColumns>>
-	extends JoinMixin(WhereMixin<Constructable<Query<TReturningColumns, TSingleColumn>>, TUpdatedColumns>(Query)) {
+	extends JoinMixin(WhereMixin<Constructable<Query<TReturningColumns, TSingleColumn>>, TFromTblCols>(Query)) {
 
 	protected _from: FromFactor | undefined = undefined;
 	protected _whereCondition: Expression<boolean> | undefined;

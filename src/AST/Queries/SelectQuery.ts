@@ -89,13 +89,15 @@ export class SelectQuery<TSelectedCols extends ImplicitColumns, TFromTblCols ext
 		Ordering<(Expression<any> | keyof TFromTblCols)> | Expression<any> | keyof TFromTblCols
 	)[]): this;
 	public orderBy(expressionSelector: (selectedColumns: ImplicitColumnsToColumns<TSelectedCols>)
-		=> (Ordering<Expression<any>> | Expression<any>)[]): this;
+		=> (Ordering<Expression<any>> | Expression<any>)[] | (Ordering<Expression<any>> | Expression<any>)): this;
 	public orderBy(...expressions: any[]): this {
 
 		const expressions2 = ((): (Ordering<(Expression<any> | keyof TFromTblCols)> | Expression<any> | keyof TFromTblCols)[] => {
 			const firstExpr = expressions[0];
 			if (firstExpr && (typeof firstExpr) === "function") {
-				return firstExpr(this.columns);
+				const expr = firstExpr(this.columns);
+				if (Array.isArray(expr)) return expr;
+				return [ expr ];
 			}
 			return expressions;
 		})();

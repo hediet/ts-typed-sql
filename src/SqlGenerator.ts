@@ -64,12 +64,14 @@ export abstract class SqlGenerator {
 		throw new Error(`Unsupported query: ${statement}`);
 	}
 
-	protected createExpressionContext(from: FromFactor|undefined, context: Context): ExpressionContext {
+	protected createExpressionContext(froms: (FromFactor|undefined)[], context: Context): ExpressionContext {
 		if (!this.options.shortenColumnNameIfUnambigous)
 			return { isColumnNameUnambigous: name => false, resolveNamedExpression: false, context };
 
 		let allColumns: Exprs.Column<any, any>[] = [];
-		if (from) {
+		for (const from of froms) {
+			if (!from) continue;
+
 			const allFromFactors = FromFactor.getAllFromFactors(from);
 
 			allColumns = allColumns.concat(
@@ -145,7 +147,7 @@ export abstract class SqlGenerator {
 		const data = query.getState();
 		let sql = `DELETE FROM ${this.referToFromItem(data.table)}`;
 		
-		const expressionContext = this.createExpressionContext(data.using, context);
+		const expressionContext = this.createExpressionContext([data.using, data.table], context);
 
 		if (data.using) {
 			sql += ` USING ${this.fromToSql(data.using, expressionContext)}`;
@@ -165,7 +167,7 @@ export abstract class SqlGenerator {
 		const data = query.getState();
 		let sql = `UPDATE ${this.referToFromItem(data.table)}`;
 		
-		const expressionContext = this.createExpressionContext(data.from, context);
+		const expressionContext = this.createExpressionContext([data.from, data.table], context);
 
 		sql += " SET " + Object.entries(data.updatedColumns).map(([name, value]: [string, Exprs.Expression<any>]) => 
 			`${this.quoteColumnName(name)} = ${this.expressionToSql(value, expressionContext)}`
@@ -189,7 +191,7 @@ export abstract class SqlGenerator {
 		const data = query.getState();
 		let sql = "SELECT";
 
-		const expressionContext = this.createExpressionContext(data.from, context);
+		const expressionContext = this.createExpressionContext([data.from], context);
 
 		if (data.selected.length > 0) {
 			sql += " " + this.toSelectStatementStr(data.selected, expressionContext);
@@ -201,6 +203,12 @@ export abstract class SqlGenerator {
 
 		if (data.whereCondition) {
 			sql += ` WHERE ${this.expressionToSql(data.whereCondition, expressionContext)}`;
+		}
+
+		if (data.groupBys.length > 0) {
+			const exprCt = { isColumnNameUnambigous: expressionContext.isColumnNameUnambigous, resolveNamedExpression: false, context: context };
+			const statements = data.groupBys.map(e => this.expressionToSql(e, exprCt)).join(", ");
+			sql += ` GROUP BY ${statements}`;
 		}
 
 		if (data.havingCondition) {
@@ -363,7 +371,7 @@ export abstract class SqlGenerator {
 		}
 		if (e instanceof Exprs.IsInValuesExpression) {
 			if (e.values.length === 0)
-				return this.expressionToSql(Exprs.val(false), context, e.precedenceLevel);
+				return this.expressionToSql(Exprs.val(false, true), context, e.precedenceLevel);
 			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
 			return `${arg} IN (${e.values.map(v => this.expressionToSql(v, context)).join(", ")})`;
 		}

@@ -13,7 +13,15 @@ const contacts = table("contacts",
 	},
 	{
 		id: column<number>()
-	});
+	}
+);
+
+const contactAddresses = table("contact_addresses",
+	{
+		id: column<number>(),
+		address: column<string>()
+	}
+);
 
 function check<T2>(query: Query<T2, any>, expectedSql: string, args: any[] = []) {
 	const generator = new PostgreSqlGenerator({ shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });
@@ -56,30 +64,163 @@ describe("Select", () => {
 		);
 	});
 
-	it("should support alias tables with joins", () => {
-		const c = contacts.as("c").asNullable();
+	it("should support complex selections", () => {
 		check(
-			from(contacts).leftJoin(c).on({ firstname: contacts.parentFirstname, lastname: contacts.parentLastname }),
-			`SELECT FROM contacts LEFT JOIN contacts AS c ON c.firstname = contacts."parentFirstname" AND c.lastname = contacts."parentLastname"`
+			select(select(val(1).as("foo")).asExpression().as("bla")),
+			`SELECT (SELECT $1 AS foo) AS bla`, [1]
 		);
 	});
-});
 
-describe("Limit, Offset", () => {
-	it("should support limit and offset", () => {
-		check(
-			from(contacts).limit(1).offset(10),
-			`SELECT FROM contacts LIMIT $1 OFFSET $2`, [1, 10]
-		);
+	it("should throw on invalid argument", () => {
+		assert.throws(() => {
+			select("test" as any);
+		});
 
-		check(
-			from(contacts).offset(12).offset(10).limit(2).limit(1),
-			`SELECT FROM contacts LIMIT $1 OFFSET $2`, [1, 10]
-		);
+		assert.throws(() => {
+			from(contacts).select("test" as any);
+		});
+
+		assert.throws(() => {
+			from(contacts).select([] as any);
+		});
+	});
+
+	describe("Joins", () => {
+		const c = contacts.as("c").asNullable();
+
+		it("should support LEFT JOIN", () => {
+			check(
+				from(contacts).leftJoin(c).on({ firstname: contacts.parentFirstname, lastname: contacts.parentLastname }),
+				`SELECT FROM contacts LEFT JOIN contacts AS c ON c.firstname = contacts."parentFirstname" AND c.lastname = contacts."parentLastname"`
+			);
+		});
+
+		it("should support FULL JOIN", () => {
+			check(
+				from(contacts).fullJoin(c).on({ firstname: contacts.parentFirstname, lastname: contacts.parentLastname }),
+				`SELECT FROM contacts FULL JOIN contacts AS c ON c.firstname = contacts."parentFirstname" AND c.lastname = contacts."parentLastname"`
+			);
+		});
+
+		it("should support INNER JOIN", () => {
+			check(
+				from(contacts).innerJoin(c).on({ firstname: contacts.parentFirstname, lastname: contacts.parentLastname }),
+				`SELECT FROM contacts JOIN contacts AS c ON c.firstname = contacts."parentFirstname" AND c.lastname = contacts."parentLastname"`
+			);
+		});
+
+		it("should support CROSS JOIN", () => {
+			check(
+				from(contacts).from(c),
+				`SELECT FROM contacts CROSS JOIN contacts AS c`
+			);
+		});
+
+		it("should require a JOIN condition", () => {
+			assert.throws(() => {
+				from(contacts).leftJoin(c).on({})
+			});
+		});
+
+		it("should require a from before join", () => {
+			assert.throws(() => {
+				select().leftJoin(c).on({})
+			}, "A primary table must be selected before other tables can be joined.");
+		});
+	})
+
+
+
+
+	describe("Limit, Offset", () => {
+		it("should support limit and offset", () => {
+			check(
+				from(contacts).limit(1).offset(10),
+				`SELECT FROM contacts LIMIT $1 OFFSET $2`, [1, 10]
+			);
+
+			check(
+				from(contacts).offset(12).offset(10).limit(2).limit(1),
+				`SELECT FROM contacts LIMIT $1 OFFSET $2`, [1, 10]
+			);
+		});
+	});
+
+	describe("Order By", () => {
+		it("should support order by", () => {
+			check(
+				from(contacts).select(contacts.id).orderBy("id"),
+				"SELECT id FROM contacts ORDER BY id"
+			);
+
+			check(
+				from(contacts).select(contacts.firstname).orderBy({ asc: "id" }),
+				"SELECT firstname FROM contacts ORDER BY id"
+			);
+
+			check(
+				from(contacts).select(contacts.firstname).orderBy({ desc: "id" }),
+				"SELECT firstname FROM contacts ORDER BY id DESC"
+			);
+
+			check(
+				from(contacts).select(contacts.firstname).orderBy(contacts.id),
+				"SELECT firstname FROM contacts ORDER BY id"
+			);
+
+			check(
+				from(contacts).select(contacts.firstname).orderBy(contacts.id.asc()),
+				"SELECT firstname FROM contacts ORDER BY id"
+			);
+
+			check(
+				from(contacts).select(contacts.firstname).orderBy(contacts.id.desc()),
+				"SELECT firstname FROM contacts ORDER BY id DESC"
+			);
+
+			check(
+				from(contacts).select(concat(contacts.firstname, contacts.lastname).as("fullName")).orderBy(t => t.fullName),
+				`SELECT CONCAT(firstname, lastname) AS "fullName" FROM contacts ORDER BY "fullName"`
+			);
+
+			check(
+				from(contacts).select(concat(contacts.firstname, contacts.lastname).as("fullName")).orderBy(t => [ t.fullName ]),
+				`SELECT CONCAT(firstname, lastname) AS "fullName" FROM contacts ORDER BY "fullName"`
+			);
+		})
+	});
+
+	describe("GroupBy, Having", () => {
+		it("should support having", () => {
+			check(
+				from(contacts).select("lastname").groupBy("lastname").having(contacts.lastname.count().isGreaterThan(1)),
+				"SELECT lastname FROM contacts GROUP BY lastname HAVING COUNT(lastname) > $1", [1]
+			);
+		});
+
+		it("should support groupBy with reference to select", () => {
+			check(
+				from(contacts).select(contacts.lastname.as("f")).groupBy(c => c.f),
+				"SELECT lastname AS f FROM contacts GROUP BY f"
+			);
+
+			check(
+				from(contacts).select(contacts.lastname.as("f")).groupBy(c => [c.f]),
+				"SELECT lastname AS f FROM contacts GROUP BY f"
+			);
+		});
+
+		it("should support having with reference to select", () => {
+			check(
+				from(contacts).select("lastname").select(contacts.lastname.count().as("count")).groupBy("lastname").having(cols => cols.count.isGreaterThan(1)),
+				"SELECT lastname, COUNT(lastname) AS count FROM contacts GROUP BY lastname HAVING COUNT(lastname) > $1", [1]
+			);
+		});
 	});
 });
 
 describe("Where", () => {
+
 	it("should support simple where", () => {
 		check(
 			from(contacts).where({ firstname: "1" }),
@@ -122,10 +263,29 @@ function checkExpression(expr: Expression<any>, expected: string, args: any[]) {
 }
 
 describe("Expressions", () => {
+	it("should support null operators", () => {
+		checkExpression(
+			val(1).isNull(),
+			`$1 IS NULL`, [1]
+		);
+
+		checkExpression(
+			val(1).isNotNull(),
+			`$1 IS NOT NULL`, [1]
+		);
+	});
+
 	it("should support in", () => {
 		checkExpression(
 			val(1).isIn([2, 3]),
 			`$1 IN ($2, $3)`, [1, 2, 3]
+		);
+	});
+
+	it("should support empty in", () => {
+		checkExpression(
+			val(1).isIn([]),
+			`false`, []
 		);
 	});
 
@@ -157,45 +317,6 @@ describe("Expressions", () => {
 	});
 });
 
-describe("Order By", () => {
-	it("should support order by", () => {
-		check(
-			from(contacts).select(contacts.id).orderBy("id"),
-			"SELECT id FROM contacts ORDER BY id"
-		);
-
-		check(
-			from(contacts).select(contacts.firstname).orderBy({ asc: "id" }),
-			"SELECT firstname FROM contacts ORDER BY id"
-		);
-
-		check(
-			from(contacts).select(contacts.firstname).orderBy({ desc: "id" }),
-			"SELECT firstname FROM contacts ORDER BY id DESC"
-		);
-
-		check(
-			from(contacts).select(contacts.firstname).orderBy(contacts.id),
-			"SELECT firstname FROM contacts ORDER BY id"
-		);
-
-		check(
-			from(contacts).select(contacts.firstname).orderBy(contacts.id.asc()),
-			"SELECT firstname FROM contacts ORDER BY id"
-		);
-
-		check(
-			from(contacts).select(contacts.firstname).orderBy(contacts.id.desc()),
-			"SELECT firstname FROM contacts ORDER BY id DESC"
-		);
-
-		check(
-			from(contacts).select(concat(contacts.firstname, contacts.lastname).as("fullName")).orderBy(t => [ t.fullName ]),
-			`SELECT CONCAT(firstname, lastname) AS "fullName" FROM contacts ORDER BY "fullName"`
-		);
-	})
-});
-
 describe("Values", () => {
 	it("should support values", () => {
 		const vals = values([{ a: 1, b: 2 }, { a: 1, b: 3 }]).as("v");
@@ -222,6 +343,16 @@ describe("Update", () => {
 			update(contacts).set("firstname", "1").where({ id: 0 }).returning("firstname"),
 			`UPDATE contacts SET firstname = $1 WHERE id = $2 RETURNING firstname`, ["1", 0]
 		);
+
+		check(
+			update(contacts)
+				.from(contactAddresses)
+				.where({ id: contacts.id })
+				.where(contactAddresses.address.isLike("%NYC%"))
+				.set({ firstname: "1" })
+				.returning("id"),
+			`UPDATE contacts SET firstname = $1 FROM contact_addresses WHERE contact_addresses.id = contacts.id AND (address LIKE $2) RETURNING contact_addresses.id`, ["1", "%NYC%"]
+		);
 	});
 });
 
@@ -237,6 +368,14 @@ describe("Delete", () => {
 			`DELETE FROM contacts WHERE id = $1 RETURNING id`, [0]
 		);
 	});
+
+	it("should support using", () => {
+		const c = contacts.as("c");
+		check(
+			deleteFrom(contacts).using(c).where({ id: contacts.id }).returning("id"),
+			`DELETE FROM contacts USING contacts AS c WHERE c.id = contacts.id RETURNING c.id`, []
+		);
+	});
 });
 
 describe("Insert", () => {
@@ -250,8 +389,8 @@ describe("Insert", () => {
 			insertInto(contacts).values([
 				{ firstname: "1", lastname: "2", parentFirstname: "3", parentLastname: "4" },
 				{ firstname: "3", lastname: "2", parentFirstname: "3", parentLastname: "4" }
-			]),
-			`INSERT INTO contacts(firstname, lastname, "parentFirstname", "parentLastname") VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)`, ["1", "2", "3", "4", "3", "2", "3", "4"]
+			]).returning("id"),
+			`INSERT INTO contacts(firstname, lastname, "parentFirstname", "parentLastname") VALUES ($1, $2, $3, $4), ($5, $6, $7, $8) RETURNING id`, ["1", "2", "3", "4", "3", "2", "3", "4"]
 		);
 
 		check(

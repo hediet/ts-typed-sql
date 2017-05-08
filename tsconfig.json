@@ -1,23 +1,22 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es6",
-		"lib": [
-			"es2017", "dom"
-		],
-		"allowJs": false,
-		"noImplicitAny": true,
-		"noImplicitThis": true,
-		"strictNullChecks": true,
-		"noImplicitReturns": true,
-		"sourceMap": true,
-		"experimentalDecorators": true,
-		"noImplicitUseStrict": true,
-		"outDir": "dist",
-		"declaration": false
-	},
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "lib": [ "es5", "es2015", "dom" ],
+    "allowJs": false,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "noImplicitReturns": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "noImplicitUseStrict": true,
+    "outDir": "dist",
+    "declaration": false
+  },
 	"include": [
 		"./src/**/*",
-		"./test/**/*"
+		"./test/**/*",
+		"./example/**/*"
 	]
 }

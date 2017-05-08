@@ -1,3 +1,4 @@
+import { UnionQuery } from './AST/Queries/RetrievalQuery';
 import { ValuesQuery } from './AST/Queries/ValuesQuery';
 import { InsertQuery } from './AST/Queries/InsertQuery';
 import { UpdateQuery } from './AST/Queries/UpdateQuery';
@@ -21,6 +22,8 @@ import { SelectQuery } from "./AST/Queries/SelectQuery";
 import * as Exprs from './AST/Expressions';
 import { Table, TableName } from "./AST/Table";
 import { isOrderingAsc } from "./AST/Ordering";
+import { objectValues, objectEntries } from "./Helpers";
+import { AnyType } from "./index";
 
 export interface SqlGeneratorOptions {
 	shortenColumnNameIfUnambigous?: boolean;
@@ -57,6 +60,8 @@ export abstract class SqlGenerator {
 		if (statement instanceof DeleteQuery) return this.transformDeleteQueryToSql(statement, context);
 		if (statement instanceof ValuesQuery) return this.transformValuesQueryToSql(statement, context);
 
+		if (statement instanceof UnionQuery) return this.transformUnionQueyToSql(statement, context);
+
 		if (statement instanceof StartTransactionStatement) return "BEGIN";
 		if (statement instanceof CommitTransactionStatement) return "COMMIT";
 		if (statement instanceof RollbackTransactionStatement) return "ROLLBACK";
@@ -75,7 +80,7 @@ export abstract class SqlGenerator {
 			const allFromFactors = FromFactor.getAllFromFactors(from);
 
 			allColumns = allColumns.concat(
-				...allFromFactors.map(f => Object.values(f.$columns)));
+				...allFromFactors.map(f => objectValues(f.$columns)));
 		}
 		const set = new Set<string>();
 		const duplicates = new Set<string>();
@@ -87,14 +92,26 @@ export abstract class SqlGenerator {
 		return { isColumnNameUnambigous: name => !duplicates.has(name), resolveNamedExpression: false, context };
 	}
 
+	protected transformUnionQueyToSql(query: UnionQuery<any, any>, context: Context): string {
+		const query1Sql = this.transformToSql(query.query1, context);
+		const query2Sql = this.transformToSql(query.query2, context);
+
+		return `(${query1Sql}) UNION (${query2Sql})`;
+	}
+
 	protected transformValuesQueryToSql(query: ValuesQuery<any>, context: Context): string {
-		const first = query.values[0]; // todo exception
+		const columns = query.columns;
+
+		if (query.values.length === 0) {
+			return `SELECT ${Object.keys(columns).map(k => "null").join(", ")} WHERE false`;
+		}
+
 		let sql = "VALUES ";
 
 		const expressionContext: ExpressionContext = { isColumnNameUnambigous: c => true, resolveNamedExpression: true, context };
 
 		sql += query.values.map(v => 
-			`(${Object.keys(first).map(k => this.escapeValue(new Exprs.ValueExpression(v[k]), expressionContext)).join(", ")})`
+			`(${objectEntries(columns).map(([name, type]) => this.escapeValue(new Exprs.ValueExpression(type, v[name]), expressionContext)).join(", ")})`
 		).join(", ");
 
 		return sql;
@@ -169,7 +186,7 @@ export abstract class SqlGenerator {
 		
 		const expressionContext = this.createExpressionContext([data.from, data.table], context);
 
-		sql += " SET " + Object.entries(data.updatedColumns).map(([name, value]: [string, Exprs.Expression<any>]) => 
+		sql += " SET " + objectEntries(data.updatedColumns).map(([name, value]: [string, Exprs.Expression<any>]) => 
 			`${this.quoteColumnName(name)} = ${this.expressionToSql(value, expressionContext)}`
 		).join(", ");
 
@@ -231,7 +248,7 @@ export abstract class SqlGenerator {
 		return sql;
 	}
 
-	protected toSelectStatementStr(selected: (Exprs.NamedExpression<any, any>|Exprs.AllExpression<any>)[], context: ExpressionContext): string {
+	protected toSelectStatementStr(selected: (Exprs.NamedExpression<string, AnyType>|Exprs.AllExpression<object>)[], context: ExpressionContext): string {
 		return selected.map(expr => {
 			if (expr instanceof Exprs.NamedExpressionWrapper) {
 				return `${this.expressionToSql(expr.expression, context)} AS ${this.quoteColumnName(expr.name)}`;
@@ -254,10 +271,10 @@ export abstract class SqlGenerator {
 
 	protected abstract quoteSchemaOrTableOrColumnName(name: string): string;
 
-	protected referToFromItem(fromItem: FromItem<any>): string {
+	protected referToFromItem(fromItem: FromItem<any>, includeSchema: boolean = true): string {
 		if (fromItem instanceof Table) {
 			let result = "";
-			if (fromItem.$name.schema) result += this.quoteSchemaName(fromItem.$name.schema) + ".";
+			if (fromItem.$name.schema && includeSchema) result += this.quoteSchemaName(fromItem.$name.schema) + ".";
 			result += this.quoteTableName(fromItem.$name.name);
 			return result;
 		}
@@ -317,21 +334,22 @@ export abstract class SqlGenerator {
 		throw new Error(`Unknown From Factor '${f}'`);
 	}
 
-	protected escapeValue(expr: Exprs.ValueExpression<any>, context: ExpressionContext): string {
+	protected escapeValue(expr: Exprs.ValueExpression<AnyType>, context: ExpressionContext): string {
 		const val = expr.value;
+		const serialized = expr.type.serialize(val);
 
-		context.context.parameters.push(val);
+		context.context.parameters.push(serialized);
 		return "?";
 	}
 
-	private expressionToSql(e: Exprs.Expression<any>, context: ExpressionContext, parentPrecedenceLevel: number = 1000): string {
+	private expressionToSql(e: Exprs.Expression<AnyType>, context: ExpressionContext, parentPrecedenceLevel: number = 1000): string {
 		const result = this.expressionToSqlAutoParenthesis(e, context);
 		if (e.precedenceLevel > parentPrecedenceLevel)
 			return `(${result})`;
 		return result;
 	}
 
-	private expressionToSqlAutoParenthesis(e: Exprs.Expression<any>, context: ExpressionContext): string {
+	private expressionToSqlAutoParenthesis(e: Exprs.Expression<AnyType>, context: ExpressionContext): string {
 		if (e instanceof Exprs.NamedExpressionWrapper) {
 			if (context.resolveNamedExpression)
 				return this.expressionToSql(e.expression, context);
@@ -348,6 +366,10 @@ export abstract class SqlGenerator {
 			
 			const tableName = this.referToFromItem(e.fromItem);
 			return `${tableName}.${columnName}`;
+		}
+		if (e instanceof Exprs.FromItemExpression) {
+			const tableName = this.referToFromItem(e.fromItem, false);
+			return tableName;
 		}
 		if (e instanceof Exprs.AllExpression) {
 			const tableName = this.referToFromItem(e.fromItem);
@@ -395,6 +417,14 @@ export abstract class SqlGenerator {
 			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
 			return `${arg} IS NOT NULL`;
 		}
-		throw "not implemented";
+		if (e instanceof Exprs.JsonPropertyAccess) {
+			const arg = this.expressionToSql(e.expression, context, e.precedenceLevel);
+			return `${arg}->${this.escapeValue(Exprs.val(e.key, true), context)}`;
+		}
+		if (e instanceof Exprs.CastExpression) {
+			return this.expressionToSql(e.expression, context, e.precedenceLevel);
+		}
+
+		throw new Error(`not supported expression: ${e}`);
 	}
 }

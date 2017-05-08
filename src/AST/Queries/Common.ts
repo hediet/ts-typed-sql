@@ -1,10 +1,21 @@
 import { Expression, Column, NamedExpression, NamedExpressionNameOf, ExpressionTypeOf, AllExpression } from "../Expressions";
 import { FromItem } from "../FromFactor";
+import { objectValues } from "../../Helpers";
+import { AnyType } from "../Types";
 
+/**
+ * An helper for mixins.
+ * @private
+ */
 export type Constructable<T> = new (...args: any[]) => T;
 
+/**
+ * If `expression` is a string, it returns the column from `fromItem` that has the name `expression` (or throws an exception).
+ * Otherwise, it ensures that `expression` is an `Expression` and returns it.
+ * @private
+ */
 export function resolveColumnReference<TExpr extends Expression<any>, TFromTblCols>(
-		fromItem: FromItem<TFromTblCols>|undefined, expression: TExpr | keyof TFromTblCols): TExpr|Column<any, any> {
+	fromItem: FromItem<TFromTblCols> | undefined, expression: TExpr | keyof TFromTblCols): TExpr | Column<string, AnyType> {
 
 	if (expression instanceof Expression) return expression;
 
@@ -15,19 +26,22 @@ export function resolveColumnReference<TExpr extends Expression<any>, TFromTblCo
 			+ `Use method 'from' before.`);
 	}
 
-	const column = fromItem.$columns[expression] as Column<any, any>;
+	const column = fromItem.$columns[expression] as Column<string, any>;
 	if (!column) throw new Error(`Column with name '${expression}' does not exist on last table that has been specified in from.`);
 	return column;
 }
 
-
+/**
+ * An helper method for select or returning.
+ * @private
+ */
 export function handleSelect<TFromTblCols>(
-		fromItem: FromItem<TFromTblCols>|undefined,
-		resultColumns: { [exprName: string]: NamedExpression<any, any> },
-		selectedExpressions: (NamedExpression<any, any>|AllExpression<any>)[],
-		args: ((keyof TFromTblCols)|NmdExpr|AllExpression<any>)[]) {
+	fromItem: FromItem<TFromTblCols> | undefined,
+	selectedExpressions: ((keyof TFromTblCols) | NmdExpr | AllExpression<object>)[],
+	allReturningColumns: { [exprName: string]: NamedExpression<string, AnyType> },
+	allSelectedExpressions: (NamedExpression<string, AnyType> | AllExpression<object>)[]) {
 
-	const normalizedExpressions = args.map(arg => resolveColumnReference<NmdExpr|AllExpression<any>, TFromTblCols>(fromItem, arg));
+	const normalizedExpressions = selectedExpressions.map(arg => resolveColumnReference<NmdExpr | AllExpression<object>, TFromTblCols>(fromItem, arg));
 
 	for (const expr of normalizedExpressions) {
 		if (!(expr instanceof NamedExpression || expr instanceof AllExpression))
@@ -35,14 +49,29 @@ export function handleSelect<TFromTblCols>(
 	}
 
 	for (const expr of normalizedExpressions) {
-		for (const col of (expr instanceof AllExpression) ? Object.values(expr.fromItem.$columns) as Column<any, any>[] : [expr])
-			resultColumns[col.name] = col;
+		for (const col of (expr instanceof AllExpression) ? objectValues(expr.fromItem.$columns) as Column<string, AnyType>[] : [expr])
+			allReturningColumns[col.name] = col;
 
-		selectedExpressions.push(expr);
+		allSelectedExpressions.push(expr);
 	}
 }
 
-export type NmdExpr = NamedExpression<any, any>;
-export type Simplify<T> = {[TKey in keyof T]: T[TKey]}
-export type NmdExprToImplctColumn<TCol extends NmdExpr> =
+
+/**
+ * A functor that forces typescript to resolve `|` and `&` operators.
+ * @private
+ */
+export type Simplify<T> = {[TKey in keyof T]: T[TKey]};
+
+/**
+ * A short form for `NamedExpression<any, any>`.
+ * @private
+ */
+export type NmdExpr = NamedExpression<string, AnyType>;
+
+/**
+ * 
+ * @private
+ */
+export type NmdExprToRow<TCol extends NmdExpr> =
 	{[TKey in NamedExpressionNameOf<TCol>]: ExpressionTypeOf<TCol> };

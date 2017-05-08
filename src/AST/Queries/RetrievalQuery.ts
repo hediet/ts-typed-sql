@@ -1,10 +1,11 @@
+import { IntegerType, tInteger } from '../Types';
 import { Query, SingleColumn } from "./Query";
-import { Expression, ExpressionOrValue, RetrievalQueryAsExpression, Variable, normalize, AllExpression, NamedExpression } from "../Expressions";
-import { FromItem } from "../FromFactor";
+import { Expression, ExpressionOrInputValue, RetrievalQueryAsExpression, Variable, normalize, AllExpression, NamedExpression } from "../Expressions";
+import { FromItem, Row, getColumn } from "../FromFactor";
 
-export class RetrievalQuery<TColumns, TSingleColumn extends SingleColumn<TColumns>> extends Query<TColumns, TSingleColumn> {
-	private _limit: Expression<number> | undefined;
-	private _offset: Expression<number> | undefined;
+export class RetrievalQuery<TRow extends Row, TSingleColumn extends SingleColumn<TRow>> extends Query<TRow, TSingleColumn> {
+	private _limit: Expression<IntegerType> | undefined;
+	private _offset: Expression<IntegerType> | undefined;
 
 	public getState() {
 		return Object.assign({
@@ -13,29 +14,36 @@ export class RetrievalQuery<TColumns, TSingleColumn extends SingleColumn<TColumn
 		}, super.getState());
 	}
 
-	public limit(count: ExpressionOrValue<number>): this {
-		this._limit = normalize(count);
+	public limit(count: ExpressionOrInputValue<IntegerType>): this {
+		this._limit = normalize(tInteger, count);
 		return this;
 	}
 
-	public offset(count: ExpressionOrValue<number>): this {
-		this._offset = normalize(count);
+	public offset(count: ExpressionOrInputValue<IntegerType>): this {
+		this._offset = normalize(tInteger, count);
 		return this;
 	}
 
-	public asExpression<TSingleColumn2 extends keyof TColumns>
-			(this: RetrievalQuery<TColumns, TSingleColumn2>): Expression<TColumns[TSingleColumn2]> {
-		return new RetrievalQueryAsExpression<TColumns[TSingleColumn2]>(this);
+	public asExpression<TSingleColumn2 extends keyof TRow>
+		(this: RetrievalQuery<TRow, TSingleColumn2>): Expression<TRow[TSingleColumn2]> {
+		const column = this.returningColumns[this.singleColumn];
+		return new RetrievalQueryAsExpression<TRow[TSingleColumn2]>(this, column.type);
 	}
 }
 
-/*
-export class UnionQuery<TColumns, TSingleColumn extends SingleColumn<TColumns>> extends RetrievalQuery<TColumns, TSingleColumn> {
 
+export class UnionQuery<TColumns, TSingleColumn extends SingleColumn<TColumns>> extends RetrievalQuery<TColumns, TSingleColumn> {
+	constructor(public readonly query1: RetrievalQuery<TColumns, TSingleColumn>, public readonly query2: RetrievalQuery<TColumns, any>) {
+		super();
+
+		const s = query1.getState();
+		this.returningColumns = s.returningColumns;
+		this.selectedExpressions = s.selected;
+	}
 }
 
 export function unionAll<TColumns, TSingleColumn extends SingleColumn<TColumns>>(query1: RetrievalQuery<TColumns, TSingleColumn>, ...queries: RetrievalQuery<any, any>[])
-	: UnionQuery<TColumns, TSingleColumn> {
-		
+	: RetrievalQuery<TColumns, TSingleColumn> {
+
+	return queries.reduce((p, c) => new UnionQuery(p, c), query1);
 }
-*/

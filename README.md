@@ -1,4 +1,4 @@
-# hediet-typed-sql
+# @hediet/typed-sql
 
 [![Build Status](https://travis-ci.org/hediet/ts-typed-sql.svg?branch=master)](https://travis-ci.org/hediet/ts-typed-sql)
 [![Coverage Status](https://coveralls.io/repos/github/hediet/ts-typed-sql/badge.svg?branch=master)](https://coveralls.io/github/hediet/ts-typed-sql?branch=master)
@@ -8,7 +8,7 @@ Currently only has support for PostgreSql, however, it should be very easy to im
 
 ## Installation
 
-`hediet-typed-sql` can be installed via the node package manager using the command `npm install hediet-typed-sql --save`.
+`@hediet/typed-sql` can be installed via the node package manager using the command `npm install @hediet/typed-sql --save`.
 
 ## Usage
 
@@ -20,7 +20,7 @@ Intellisense works great when using this library from TypeScript in VS Code.
 
 For proper typing, all used tables must be defined:
 ```ts
-import { table, column } from "hediet-typed-sql";
+import { table, column } from "@hediet/typed-sql";
 
 const contacts = table({ name: "contacts", schema: "public" },
 	{
@@ -40,7 +40,7 @@ const contacts = table({ name: "contacts", schema: "public" },
 SQL queries are processed by an instance of `DbConnection`.
 To construct a `DbConnection`, a query service is required:
 ```ts
-import { DbConnection, PostgreQueryService } from "hediet-typed-sql";
+import { DbConnection, PostgreQueryService } from "@hediet/typed-sql";
 import pg = require("pg");
 
 const pool = new pg.Pool({
@@ -54,7 +54,7 @@ const dbCon = new DbConnection(queryService);
 
 ```
 
-### Queries
+### Some Queries
 
 Queries are independent of `DbConnection`, however, an instance of `DbConnection` is needed to execute queries.
 If `q` is a query, it can be executed by one of the methods that `DbConnection` provides:

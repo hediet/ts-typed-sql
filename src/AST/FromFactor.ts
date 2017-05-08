@@ -1,16 +1,21 @@
-import { Expression, Column, ColumnBoundToExpression, AllExpression, ExpressionTypeOf } from "./Expressions";
-import { toObject } from "../Helpers";
-import { Query } from "../AST/Queries/Query";
+import { Expression, Column, ColumnBoundToExpression, AllExpression, ExpressionTypeOf, FromItemExpression } from "./Expressions";
+import { toObject, objectEntries, objectValues } from "../Helpers";
+import { Query } from "./Queries/Query";
+import { AnyType, Record, BooleanType } from "./Types";
 
-export interface ImplicitColumns {
-	[name: string]: any;
+export interface Row {
+	[name: string]: any;//AnyType;
 }
 
-export type ImplicitColumnsToColumns<TColumns extends ImplicitColumns> =
-	{ [TName in keyof TColumns]: Column<TName, TColumns[TName]> };
+export interface Columns {
+	[name: string]: any;//Column<string, AnyType>;
+}
 
-export type ColumnsToImplicit<TColumns extends ImplicitColumns>
-	= { [TName in keyof TColumns]: ExpressionTypeOf<TColumns[TName]> };
+export type RowToColumns<TColumns extends Row> =
+	{[TName in keyof TColumns]: Column<TName, TColumns[TName]> };
+
+export type ColumnsToRow<TColumns extends Columns>
+	= {[TName in keyof TColumns]: ExpressionTypeOf<TColumns[TName]> };
 
 export class FromFactor {
 	_brand: "FromFactor";
@@ -26,7 +31,7 @@ export class FromFactor {
 		throw new Error("Unsupported from factor");
 	}
 
-	public static crossJoin(factor1: FromFactor|undefined, factor2: FromFactor|undefined): FromFactor|undefined {
+	public static crossJoin(factor1: FromFactor | undefined, factor2: FromFactor | undefined): FromFactor | undefined {
 		if (!factor1) return factor2;
 		if (!factor2) return factor1;
 		return new FromFactorCrossJoin(factor1, factor2);
@@ -35,14 +40,16 @@ export class FromFactor {
 
 export abstract class FromFactorAbstractJoin extends FromFactor {
 	constructor(public readonly leftArg: FromFactor,
-				public readonly rightArg: FromFactor) {
+		public readonly rightArg: FromFactor) {
+
 		super();
 	}
 }
 
 export abstract class FromFactorAbstractConditionalJoin extends FromFactorAbstractJoin {
 	constructor(leftArg: FromFactor, rightArg: FromFactor,
-			public readonly joinCondition: Expression<boolean>) {
+		public readonly joinCondition: Expression<BooleanType>) {
+
 		super(leftArg, rightArg);
 	}
 
@@ -54,18 +61,18 @@ export class FromFactorFullJoin extends FromFactorAbstractConditionalJoin { publ
 export class FromFactorInnerJoin extends FromFactorAbstractConditionalJoin { public getType() { return "inner"; } };
 export class FromFactorCrossJoin extends FromFactorAbstractJoin { public getType() { return "cross"; } };
 
-export type FromItemToImplicitColumns<TFromItem extends FromItem<any>> =
-	{ [TName in keyof TFromItem["$columns"] ]: ExpressionTypeOf<TFromItem["$columns"][TName]> } ;
+export type FromItemToRow<TFromItem extends FromItem<any>> =
+	{[TName in keyof TFromItem["$columns"]]: ExpressionTypeOf<TFromItem["$columns"][TName]> };
 
-export abstract class FromItem<TColumns extends ImplicitColumns> extends FromFactor {
-	public readonly $columns: ImplicitColumnsToColumns<TColumns>;
+export abstract class FromItem<TColumns extends Row> extends FromFactor {
+	public readonly $columns: RowToColumns<TColumns>;
 	public readonly $all: AllExpression<TColumns> = new AllExpression(this);
 
-	constructor(columns: ImplicitColumnsToColumns<TColumns>, private readonly castToColumns: boolean) {
+	constructor(columns: RowToColumns<TColumns>, private readonly castToColumns: boolean) {
 		super();
 		this.$columns = columns;
 
-		for (const [name, col] of Object.entries(columns)) {
+		for (const [name, col] of objectEntries(columns)) {
 			if (!(name in this))
 				(this as any)[name] = col;
 		}
@@ -73,47 +80,45 @@ export abstract class FromItem<TColumns extends ImplicitColumns> extends FromFac
 
 	public as(name: string): FromItemCtor<TColumns> {
 		const setters: ((fromItem: FromItem<any>) => void)[] = [];
-		const columns = Object.values(this.$columns)
+		const columns = objectValues(this.$columns)
 			.map((col: Column<any, any>) => new ColumnBoundToExpression(col, s => setters.push(s)));
 		const result = new NamedFromItem<TColumns>(name, toObject(columns, c => c.name), this, false) as any;
 		for (const s of setters) s(result);
 		return result;
 	}
 
-	public asNullable(): FromItemCtor<{ [TKey in keyof TColumns]: TColumns[TKey]|null }> {
+	public asNullable(): FromItemCtor<{[TKey in keyof TColumns]: TColumns[TKey] | null }> {
 		return this as any;
 	}
 
-	/* todo
 	public asExpression(): Expression<Record<TColumns>> {
-		
+		return new FromItemExpression<TColumns>(this);
 	}
-	*/
 }
 
 export function isCastToColumns(fromItem: FromItem<any>): boolean {
 	return fromItem["castToColumns"];
 }
 
-export function getColumn(fromItem: FromItem<any>, column: string): Expression<any> {
+export function getColumn(fromItem: FromItem<any>, column: string): Column<string, AnyType> {
 	const result = fromItem.$columns[column];
 	if (!result) throw new Error(`Column '${column}' does not exist on table '${fromItem}'.`);
 	return result;
 }
 
-export class NamedFromItem<TColumns extends ImplicitColumns> extends FromItem<TColumns> {
-	constructor(public readonly $name: string, columns: ImplicitColumnsToColumns<TColumns>, public readonly fromItem: FromItem<TColumns>, castToColumns: boolean) {
+export class NamedFromItem<TColumns extends Row> extends FromItem<TColumns> {
+	constructor(public readonly $name: string, columns: RowToColumns<TColumns>, public readonly fromItem: FromItem<TColumns>, castToColumns: boolean) {
 		super(columns, castToColumns);
 	}
 }
 
 export class QueryFromItem<TColumns> extends FromItem<TColumns> {
-	constructor(public readonly $name: string, columns: ImplicitColumnsToColumns<TColumns>, public readonly query: Query<TColumns, any>, castToColumns: boolean) {
+	constructor(public readonly $name: string, columns: RowToColumns<TColumns>, public readonly query: Query<TColumns, any>, castToColumns: boolean) {
 		super(columns, castToColumns);
 	}
 }
 
-export type FromItemCtor<TColumns extends ImplicitColumns> = FromItem<TColumns> & ImplicitColumnsToColumns<TColumns>;
+export type FromItemCtor<TColumns extends Row> = FromItem<TColumns> & RowToColumns<TColumns>;
 
 
 /* TODO, for recursion

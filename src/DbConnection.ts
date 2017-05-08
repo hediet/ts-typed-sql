@@ -1,10 +1,12 @@
 import { CommitTransactionStatement, RollbackTransactionStatement, SqlStatement, StartTransactionStatement } from './AST/SqlStatement';
 import { Query } from "./AST/Queries/Query";
 import { RetrievalQuery } from "./AST/Queries/RetrievalQuery";
+import { GetOutType, MapOutType } from "./AST/Types";
+import { Row } from "./AST/FromFactor";
 
 export interface SimpleDbQueryService {
-	exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
-	exec<TColumns>(statement: SqlStatement): Promise<void>;
+	exec<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow>[]>;
+	exec<TRow extends Row>(statement: SqlStatement): Promise<void>;
 }
 
 export interface DbQueryService extends SimpleDbQueryService {
@@ -14,31 +16,31 @@ export interface DbQueryService extends SimpleDbQueryService {
 export class DbQueryInterface {
 	constructor(protected readonly queryService: SimpleDbQueryService) { }
 
-	public exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
-	public exec<TColumns>(statement: SqlStatement): Promise<void>;
-	public exec<TColumns>(statement: SqlStatement): Promise<TColumns[]> | Promise<void> {
+	public exec<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow>[]>;
+	public exec<TRow extends Row>(statement: SqlStatement): Promise<void>;
+	public exec<TRow extends Row>(statement: SqlStatement): Promise<MapOutType<TRow>[]> | Promise<void> {
 		return this.queryService.exec(statement);
 	}
 
-	public async values<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn][]> {
+	public async values<TRow extends Row, TColumn extends keyof TRow>(query: Query<TRow, TColumn>): Promise<GetOutType<TRow[TColumn]>[]> {
 		const rows = await this.exec(query);
 		return rows.map(r => r[query.singleColumn]);
 	}
 
-	public async firstOrUndefined<TColumns>(query: Query<TColumns, any>): Promise<TColumns | undefined> {
+	public async firstOrUndefined<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow> | undefined> {
 		if (query instanceof RetrievalQuery)
 			query = query.limit(1);
 		const rows = await this.exec(query);
 		return rows[0];
 	}
 
-	public async first<TColumns>(query: Query<TColumns, any>): Promise<TColumns> {
+	public async first<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow>> {
 		const result = await this.firstOrUndefined(query);
 		if (!result) throw new Error("Expected at least one row.");
 		return result;
 	}
 
-	public async single<TColumns>(query: Query<TColumns, any>): Promise<TColumns> {
+	public async single<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow>> {
 		if (query instanceof RetrievalQuery)
 			query = query.limit(2);
 		const rows = await this.exec(query);
@@ -47,18 +49,18 @@ export class DbQueryInterface {
 		return rows[0];
 	}
 
-	public async firstOrUndefinedValue<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn] | undefined> {
+	public async firstOrUndefinedValue<TRow extends Row, TColumn extends keyof TRow>(query: Query<TRow, TColumn>): Promise<GetOutType<TRow[TColumn]> | undefined> {
 		const row = await this.firstOrUndefined(query);
 		if (!row) return undefined;
 		return row[query.singleColumn];
 	}
 
-	public async firstValue<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn]> {
+	public async firstValue<TRow extends Row, TColumn extends keyof TRow>(query: Query<TRow, TColumn>): Promise<GetOutType<TRow[TColumn]>> {
 		const row = await this.first(query);
 		return row[query.singleColumn];
 	}
 
-	public async singleValue<TColumns, TColumn extends keyof TColumns>(query: Query<TColumns, TColumn>): Promise<TColumns[TColumn]> {
+	public async singleValue<TRow extends Row, TColumn extends keyof TRow>(query: Query<TRow, TColumn>): Promise<GetOutType<TRow[TColumn]>> {
 		const row = await this.single(query);
 		return row[query.singleColumn];
 	}

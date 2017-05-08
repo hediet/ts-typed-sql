@@ -1,5 +1,6 @@
 import { SqlGenerator, Context, ExpressionContext } from "../SqlGenerator";
 import { ValueExpression } from "../AST/Expressions";
+import { AnyType } from "../index";
 
 export class PostgreSqlGenerator extends SqlGenerator {
 	protected quoteSchemaOrTableOrColumnName(name: string): string {
@@ -8,8 +9,8 @@ export class PostgreSqlGenerator extends SqlGenerator {
 		return this.escapeIdentifier(name);
 	}
 
-	protected escapeValue(expr: ValueExpression<any>, context: ExpressionContext): string {
-		const val = expr.value;
+	protected escapeValue(expr: ValueExpression<AnyType>, context: ExpressionContext): string {
+		const val = expr.type.serialize(expr.value);
 
 		if (expr.preferEscaping) {
 			if (val === null) return "null";

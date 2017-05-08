@@ -1,3 +1,6 @@
+import { toObject } from '../Helpers';
+import { RetrievalQuery } from '../AST/Queries/RetrievalQuery';
+import { AnyType, MapOutType } from '../AST/Types';
 import { SqlStatement } from '../AST/SqlStatement';
 import pg = require('pg');
 import { PostgreSqlGenerator } from "./PostgreSqlGenerator";
@@ -27,8 +30,8 @@ export class PostgreQueryService implements DbQueryService {
 		this.sqlGenerator = new PostgreSqlGenerator(sqlGeneratorOptions);
 	}
 
-	public exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
-	public exec<TColumns>(statement: SqlStatement): Promise<void>;
+	public exec<TRow>(query: Query<TRow, any>): Promise<MapOutType<TRow>[]>;
+	public exec<TRow>(statement: SqlStatement): Promise<void>;
 	public exec(query: SqlStatement): Promise<any> {
 		return this.execClient(query);
 	}
@@ -40,9 +43,24 @@ export class PostgreQueryService implements DbQueryService {
 
 		const result = await (client ? client.query(queryText, parameters) : this.pool.query(queryText, parameters));
 
-		resultRows.setValue(result.rows);
+		let updatedRows = result.rows;
 
-		return result.rows;
+/*
+		if (query instanceof RetrievalQuery) {
+			const cols = query.getState().returningColumns;
+			updatedRows = updatedRows.map(row => {
+				const result = {} as any;
+				for (const prop of row) {
+					const val = row[prop];
+					const type = cols[prop] as AnyType;
+					result[prop] = type.deserialize(val);
+				}
+			});
+		}
+*/
+
+		resultRows.setValue(updatedRows);
+		return updatedRows;
 	}
 
 	public getExclusiveQueryService<T>(scope: (service: SimpleDbQueryService) => Promise<T>): Promise<T> {

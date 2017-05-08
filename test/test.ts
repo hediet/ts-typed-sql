@@ -1,25 +1,27 @@
+import { unionAll } from '../src/AST/Queries/RetrievalQuery';
 import {
-	select, from, table, column, DbConnection, insertInto,
-	update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, Query, PostgreSqlGenerator, values, Expression
+	select, from, table, DbConnection, insertInto,
+	update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, Query, PostgreSqlGenerator, values, Expression, tInteger, tText, tJson
 } from "../src/index";
 import * as assert from "assert";
 
 const contacts = table("contacts",
 	{
-		firstname: column<"1" | "3">(),
-		lastname: column<"2" | "4">(),
-		parentFirstname: column<"3">(),
-		parentLastname: column<"4">()
+		firstname: tText,
+		lastname: tText,
+		parentFirstname: tText,
+		parentLastname: tText
 	},
 	{
-		id: column<number>()
+		data: tJson<{ key1: string, key2: string }>(),
+		id: tInteger,
 	}
 );
 
 const contactAddresses = table("contact_addresses",
 	{
-		id: column<number>(),
-		address: column<string>()
+		id: tInteger,
+		address: tText
 	}
 );
 
@@ -38,36 +40,51 @@ describe("Select", () => {
 			`SELECT FROM contacts`
 		);
 
-		check<{ firstname: "1" | "3", lastname: "2" | "4", parentFirstname: "3", parentLastname: "4" }>(
+		check(
 			select(contacts.$all).from(contacts),
 			`SELECT contacts.* FROM contacts`
 		);
 
-		check<{ firstname: "1" | "3", lastname: "2" | "4", parentFirstname: "3", parentLastname: "4" }>(
+		check(
 			from(contacts).select(contacts.$all),
 			`SELECT contacts.* FROM contacts`
 		);
 
-		check<{ fn: "1" | "3" }>(
+		check(
 			select(contacts.firstname.as("fn")).from(contacts),
 			`SELECT firstname AS fn FROM contacts`
 		);
 
-		check<{ fn: "1" | "3", ln: "2" | "4" }>(
+		check(
 			select(contacts.firstname.as("fn")).select(contacts.lastname.as("ln")).from(contacts),
 			`SELECT firstname AS fn, lastname AS ln FROM contacts`
 		);
 
-		check<{ fn: "1" | "3", ln: "2" | "4" }>(
+		check(
 			select(contacts.firstname.as("fn"), contacts.lastname.as("ln")).from(contacts),
 			`SELECT firstname AS fn, lastname AS ln FROM contacts`
-		);
+		);		
 	});
 
 	it("should support complex selections", () => {
 		check(
 			select(select(val(1).as("foo")).asExpression().as("bla")),
 			`SELECT (SELECT $1 AS foo) AS bla`, [1]
+		);
+
+		check(
+			select(contacts.data.prop("key2").as("result")).from(contacts),
+			`SELECT data->'key2' AS result FROM contacts`
+		);
+
+		check(
+			select(contacts.asExpression().as("result")).from(contacts),
+			`SELECT contacts AS result FROM contacts`
+		);
+
+		check(
+			select(contacts.asExpression().toJson().prop("data").prop("key1").as("result")).from(contacts),
+			`SELECT ROW_TO_JSON(contacts)->'data'->'key1' AS result FROM contacts`
 		);
 	});
 
@@ -217,6 +234,23 @@ describe("Select", () => {
 			);
 		});
 	});
+
+	describe("Union", () => {
+		it("should support single union", () => {
+			unionAll(from(contacts).select("id")),
+			"SELECT id FROM contacts"
+		});
+
+		it("should support two union", () => {
+			unionAll(from(contacts).select("id").limit(1).offset(0), from(contacts).select("id").limit(1).offset(1)),
+			"(SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1)"
+		});
+
+		it("should support three union", () => {
+			unionAll(from(contacts).select("id").limit(1).offset(0), from(contacts).select("id").limit(1).offset(1), from(contacts).select("id").limit(1).offset(2)),
+			"(SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 2)"
+		});
+	})
 });
 
 describe("Where", () => {
@@ -308,18 +342,19 @@ describe("Expressions", () => {
 	});
 
 	it("should support literal values", () => {
-		checkExpression(val(null, true), `null`, []);
+		//checkExpression(val(null, true), `null`, []);
 		checkExpression(val(true, true), `true`, []);
 		checkExpression(val(1, true), `1`, []);
 		checkExpression(val("1", true), `'1'`, []);
 		checkExpression(val("1\\2", true), ` E'1\\\\2'`, []);
 		checkExpression(val("'", true), `''''`, []);
 	});
+
 });
 
 describe("Values", () => {
 	it("should support values", () => {
-		const vals = values([{ a: 1, b: 2 }, { a: 1, b: 3 }]).as("v");
+		const vals = values({ a: tInteger, b: tInteger }, [{ a: 1, b: 2 }, { a: 1, b: 3 }]).as("v");
 		check(
 			from(vals).select(vals.a, vals.b),
 			`SELECT a, b FROM (VALUES ($1, $2), ($3, $4)) AS v(a, b)`, [ 1, 2, 1, 3 ]

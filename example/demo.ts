@@ -1,17 +1,24 @@
-import { select, from, table, column, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, FromItem, ImplicitColumns, values, FromItemToImplicitColumns } from "../src/index";
+import { IntegerType, RecordTypeToJson } from '../src/AST/Types';
+import { select, from, table, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, 
+	PostgreQueryService, concat, not, deleteFrom, FromItem, Row, values, FromItemToRow, Json, tText, tInteger, tJson } from "../src/index";
 import pg = require("pg");
 
 const contacts = table({ name: "contacts", schema: "public" },
 	{
-		firstname: column<string>(),
-		lastname: column<string>(),
-		mother_id: column<number | null>(),
-		father_id: column<number | null>()
+		firstname: tText,
+		lastname: tText,
+		mother_id: tInteger.orNull(),
+		father_id: tInteger.orNull(),
 	},
-	{ id: column<number>() }
+	{
+		id: tInteger,
+		data: tJson<{ foo: { bla: number, baz: string }, blubb: string }>().orNull()
+	}
 );
 
-let x: FromItemToImplicitColumns<typeof contacts>;
+
+
+let x: FromItemToRow<typeof contacts>;
 
 const pool = new pg.Pool({
 	database: "postgres",
@@ -29,13 +36,14 @@ const pool = new pg.Pool({
 		});
 		const dbCon = new DbConnection(queryService);
 
+		await dbCon.exec(update(contacts).where({ id: 0 }).set({ data: { foo: { bla: 1, baz: "1" }, blubb: "test" } }));
 
-/*
-		const vals = values([{ foo: 1, bar: 2 }, { foo: 10, bar: 100 }]).as("vals");
-		console.log(await dbCon.exec(
-			from(vals).select(vals.foo)
-		));
-		return;*/
+
+		const t3 = from(contacts).select(contacts.asExpression().as("p3")).where({ id: 0 }).as("t3");
+		const t2 = from(t3).select(t3.asExpression().as("p2")).as("t2");
+		const t1 = from(t2).select(t2.asExpression().as("p1")).as("t1");
+		const r = await dbCon.first(from(t1).select(t1.asExpression().toJson().prop("p1").prop("p2").prop("p3").prop("data").as("result")));
+
 
 		await dbCon.exec(deleteFrom(contacts).where(val(true)));
 		await dbCon.exec(insertInto(contacts).value(
@@ -69,7 +77,7 @@ const pool = new pg.Pool({
 
 		await dbCon.exec(
 			deleteFrom(contacts).where(contacts.id.isEqualTo(
-				from(contacts).where({ id: aryaId }).select(contacts.father_id).asExpression().cast<number>()
+				from(contacts).where({ id: aryaId }).select(contacts.father_id).asExpression().cast(tInteger)
 			))
 		);
 

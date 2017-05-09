@@ -9,6 +9,7 @@ import MonacoEditor from 'react-monaco-editor';
 import * as ts from "typescript";
 import * as sql from "../../";
 import { Maybe, isError, error, result } from "hediet-framework/api/containers";
+const content = require("!raw-loader!./content.ts");
 
 const context = require.context('!raw-loader!../../src/', true, /\.(ts)$/);
 
@@ -116,71 +117,7 @@ class GUI extends React.Component<{}, {}> {
 	private async editorDidMount(editor: monaco.editor.ICodeEditor) {
 		this.editor = editor;
 		
-		editor.setModel(monaco.editor.createModel(
-`import { select, from, val, table, column, concat, deleteFrom, insertInto, values, update } from "hediet-typed-sql";
-
-// table definitions.
-
-const organizations = table("organizations",
-	{ name: column<string>(), parentOrganizationId: column<number>(), },
-	{ id: column<number>() }
-);
-
-const customers = table({ name: "customers", schema: "public" },
-	{ firstname: column<string>(), lastname: column<string>(), country: column<string>() },
-	{ id: column<number>() }
-);
-
-const orders = table({ name: "orders", schema: "public" },
-	{ customerId: column<number>(), orderDate: column<Date>() },
-	{ id: column<number>() }
-);
-
-// Select all columns from customers.
-from(customers).select(customers.$all);
-
-from(customers).select(concat(customers.firstname, " ", customers.lastname).as("fullname"));
-
-from(customers).select("firstname").where({ id: 1 });
-
-from(customers).select("id").where(customers.firstname.toLower().isLike("h%"));
-
-from(customers).select(customers.$all).where(customers.id.isIn([1, 2]));
-
-from(customers).select(customers.$all).where(customers.id.isInQuery(
-	from(orders).select(orders.customerId)
-));
-
-
-
-// Simple Join:
-from(orders)
-	.leftJoin(customers).on({ id: orders.customerId })
-	.select(orders.id, customers.lastname);
-
-// Self Join:
-const parentOrg = organizations.as("parent");
-from(organizations)
-	.leftJoin(parentOrg).on({ parentOrganizationId: organizations.id })
-	.select(organizations.name.as("name"), parentOrg.name.as("parentName"));
-
-// Join with group by:
-from(orders).leftJoin(customers).on({ id: orders.customerId }).groupBy(customers.country).select(customers.$all.count().as("count"));
-
-
-
-// Update
-update(orders).set({ id: 0 }).where({ id: 10 });
-
-// Insert
-insertInto(customers).value({ firstname: "John", lastname: "Doe", country: "de" });
-
-insertInto(customers).valuesFrom(from(customers).select(val("de").as("country")).select("firstname", "lastname"));
-
-// Delete
-deleteFrom(orders).where({ id: 0 });
-
-`, "typescript", monaco.Uri.parse("file:///main.ts")));
+		editor.setModel(monaco.editor.createModel(content, "typescript", monaco.Uri.parse("file:///main.ts")));
 
 		let m = editor.getModel() as monaco.editor.IModel;
 		monaco.languages.typescript.typescriptDefaults.setCompilerOptions({ moduleResolution: 2 }); // ModuleResolutionKind.NodeJs

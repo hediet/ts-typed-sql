@@ -5,24 +5,24 @@ import { UpdateQuery } from './AST/Queries/UpdateQuery';
 import { DeleteQuery } from './AST/Queries/DeleteQuery';
 import { SqlStatement, CommitTransactionStatement, RollbackTransactionStatement, StartTransactionStatement } from './AST/SqlStatement';
 import {
-    FromFactor,
-    FromFactorAbstractConditionalJoin,
-    FromFactorAbstractJoin,
-    FromFactorCrossJoin,
-    FromFactorFullJoin,
-    FromFactorInnerJoin,
-    FromFactorLeftJoin,
-    FromItem,
-    isCastToColumns,
-    NamedFromItem,
-    QueryFromItem
+	FromFactor,
+	FromFactorAbstractConditionalJoin,
+	FromFactorAbstractJoin,
+	FromFactorCrossJoin,
+	FromFactorFullJoin,
+	FromFactorInnerJoin,
+	FromFactorLeftJoin,
+	FromItem,
+	isCastToColumns,
+	NamedFromItem,
+	QueryFromItem
 } from './AST/FromFactor';
 import { Query } from "./AST/Queries/Query";
 import { SelectQuery } from "./AST/Queries/SelectQuery";
 import * as Exprs from './AST/Expressions';
 import { Table, TableName } from "./AST/Table";
 import { isOrderingAsc } from "./AST/Ordering";
-import { objectValues, objectEntries } from "./Helpers";
+import { objectValues, objectEntries, DynamicDispatcher } from "./Helpers";
 import { AnyType } from "./index";
 
 export interface SqlGeneratorOptions {
@@ -45,7 +45,7 @@ export interface Context {
 // Otherwise prepared statements with parameters get messed up.
 
 export abstract class SqlGenerator {
-	constructor(protected readonly options: SqlGeneratorOptions = {}) {}
+	constructor(protected readonly options: SqlGeneratorOptions = {}) { }
 
 	public toSql(statement: SqlStatement): { sql: string, parameters: any[] } {
 		const context: Context = { parameters: [] };
@@ -69,7 +69,7 @@ export abstract class SqlGenerator {
 		throw new Error(`Unsupported query: ${statement}`);
 	}
 
-	protected createExpressionContext(froms: (FromFactor|undefined)[], context: Context): ExpressionContext {
+	protected createExpressionContext(froms: (FromFactor | undefined)[], context: Context): ExpressionContext {
 		if (!this.options.shortenColumnNameIfUnambigous)
 			return { isColumnNameUnambigous: name => false, resolveNamedExpression: false, context };
 
@@ -110,7 +110,7 @@ export abstract class SqlGenerator {
 
 		const expressionContext: ExpressionContext = { isColumnNameUnambigous: c => true, resolveNamedExpression: true, context };
 
-		sql += query.values.map(v => 
+		sql += query.values.map(v =>
 			`(${objectEntries(columns).map(([name, type]) => this.escapeValue(new Exprs.ValueExpression(type, v[name]), expressionContext)).join(", ")})`
 		).join(", ");
 
@@ -130,14 +130,15 @@ export abstract class SqlGenerator {
 			else {
 				const firstRow = data.values[0];
 				const columnNames = Object.keys(firstRow);
-
+				
 				for (const selectedCol of columnNames) {
 					if (!(selectedCol in data.table.$columns))
 						throw new Error(`Column '${selectedCol}' does not exist on table '${data.table}'.`);
 				}
 
 				sql += `(${columnNames.map(c => this.quoteColumnName(c)).join(", ")}) VALUES `;
-				sql += data.values.map(v => `(${columnNames.map(c => this.escapeValue(Exprs.val(v[c]), expressionContext)).join(", ")})`).join(", ");
+				sql += data.values.map(v => `(${columnNames.map(colName => 
+					this.escapeValue(Exprs.val(v[colName], data.table.$columns[colName].type), expressionContext)).join(", ")})`).join(", ");
 			}
 		}
 		else {
@@ -152,7 +153,7 @@ export abstract class SqlGenerator {
 
 			sql += `(${columnNames.map(c => this.quoteColumnName(c)).join(", ")}) ${this.transformToSql(data.values, context)}`;
 		}
-		
+
 		if (data.selected.length > 0) {
 			sql += " RETURNING " + this.toSelectStatementStr(data.selected, expressionContext);
 		}
@@ -163,7 +164,7 @@ export abstract class SqlGenerator {
 	protected transformDeleteQueryToSql(query: DeleteQuery<any, any, any>, context: Context): string {
 		const data = query.getState();
 		let sql = `DELETE FROM ${this.referToFromItem(data.table)}`;
-		
+
 		const expressionContext = this.createExpressionContext([data.using, data.table], context);
 
 		if (data.using) {
@@ -172,21 +173,21 @@ export abstract class SqlGenerator {
 
 		if (!data.whereCondition) throw new Error("Delete Queries must have a where condition.");
 		sql += ` WHERE ${this.expressionToSql(data.whereCondition, expressionContext)}`;
-		
+
 		if (data.selected.length > 0) {
 			sql += " RETURNING " + this.toSelectStatementStr(data.selected, expressionContext);
 		}
-	
+
 		return sql;
 	}
 
 	protected transformUpdateQueryToSql(query: UpdateQuery<any, any, any, any>, context: Context): string {
 		const data = query.getState();
 		let sql = `UPDATE ${this.referToFromItem(data.table)}`;
-		
+
 		const expressionContext = this.createExpressionContext([data.from, data.table], context);
 
-		sql += " SET " + objectEntries(data.updatedColumns).map(([name, value]: [string, Exprs.Expression<any>]) => 
+		sql += " SET " + objectEntries(data.updatedColumns).map(([name, value]: [string, Exprs.Expression<any>]) =>
 			`${this.quoteColumnName(name)} = ${this.expressionToSql(value, expressionContext)}`
 		).join(", ");
 
@@ -200,7 +201,7 @@ export abstract class SqlGenerator {
 		if (data.selected.length > 0) {
 			sql += " RETURNING " + this.toSelectStatementStr(data.selected, expressionContext);
 		}
-	
+
 		return sql;
 	}
 
@@ -229,7 +230,7 @@ export abstract class SqlGenerator {
 		}
 
 		if (data.havingCondition) {
-			const havingCondition = this.expressionToSql(data.havingCondition, 
+			const havingCondition = this.expressionToSql(data.havingCondition,
 				{ isColumnNameUnambigous: expressionContext.isColumnNameUnambigous, resolveNamedExpression: true, context: context });
 			sql += ` HAVING ${havingCondition}`;
 		}
@@ -248,7 +249,7 @@ export abstract class SqlGenerator {
 		return sql;
 	}
 
-	protected toSelectStatementStr(selected: (Exprs.NamedExpression<string, AnyType>|Exprs.AllExpression<object>)[], context: ExpressionContext): string {
+	protected toSelectStatementStr(selected: (Exprs.NamedExpression<string, AnyType> | Exprs.AllExpression<object>)[], context: ExpressionContext): string {
 		return selected.map(expr => {
 			if (expr instanceof Exprs.NamedExpressionWrapper) {
 				return `${this.expressionToSql(expr.expression, context)} AS ${this.quoteColumnName(expr.name)}`;
@@ -285,53 +286,62 @@ export abstract class SqlGenerator {
 		throw "Unsupported";
 	}
 
+	private fromFactorDispatcherInitialized = false;
+	private fromFactorDispatcher = new DynamicDispatcher<FromFactor, ExpressionContext, string>();
+
 	private fromToSql(f: FromFactor, context: ExpressionContext): string {
-		if (f instanceof Table) {
-			return this.referToFromItem(f);
+		if (!this.fromFactorDispatcherInitialized) {
+			this.fromFactorDispatcherInitialized = true;
+
+			this.fromFactorDispatcher
+				.register(Table, (f, context) => {
+					return this.referToFromItem(f);
+				})
+				.register(NamedFromItem, (f, context) => {
+					const oldName = this.referToFromItem(f.fromItem);
+					const newName = this.referToFromItem(f);
+
+					let sql = `${oldName} AS ${newName}`;
+					if (isCastToColumns(f))
+						sql += `(${Object.keys(f.$columns).join(", ")})`;
+					return sql;
+				})
+				.register(QueryFromItem, (f, context) => {
+					const newName = this.referToFromItem(f);
+
+					let sql = `(${this.transformToSql(f.query, context.context)}) AS ${newName}`;
+					if (isCastToColumns(f))
+						sql += `(${Object.keys(f.$columns).join(", ")})`;
+					return sql;
+				})
+				.register(FromFactorAbstractJoin, (f, context) => {
+					const left = this.fromToSql(f.leftArg, context);
+					const right = this.fromToSql(f.rightArg, context);
+
+					let sql: string;
+					if (f instanceof FromFactorAbstractConditionalJoin) {
+						const condition = this.expressionToSql(f.joinCondition, context);
+						let join: string;
+						if (f instanceof FromFactorCrossJoin)
+							join = "CROSS JOIN";
+						else if (f instanceof FromFactorFullJoin)
+							join = "FULL JOIN";
+						else if (f instanceof FromFactorInnerJoin)
+							join = "JOIN";
+						else if (f instanceof FromFactorLeftJoin)
+							join = "LEFT JOIN";
+						else throw new Error("Unsupported join");
+
+						return `${left} ${join} ${right} ON ${condition}`;
+					}
+					else if (f instanceof FromFactorCrossJoin) {
+						return `${left} CROSS JOIN ${right}`;
+					}
+					else throw new Error("Unknown join.");
+				});
 		}
-		else if (f instanceof NamedFromItem) {
-			const oldName = this.referToFromItem(f.fromItem);
-			const newName = this.referToFromItem(f);
 
-			let sql = `${oldName} AS ${newName}`;
-			if (isCastToColumns(f))
-				sql += `(${Object.keys(f.$columns).join(", ")})`;
-			return sql;
-		}
-		else if (f instanceof QueryFromItem) {
-			const newName = this.referToFromItem(f);
-
-			let sql = `(${this.transformToSql(f.query, context.context)}) AS ${newName}`;
-			if (isCastToColumns(f))
-				sql += `(${Object.keys(f.$columns).join(", ")})`;
-			return sql;
-		}
-		else if (f instanceof FromFactorAbstractJoin) {
-			const left = this.fromToSql(f.leftArg, context);
-			const right = this.fromToSql(f.rightArg, context);
-
-			let sql: string;
-			if (f instanceof FromFactorAbstractConditionalJoin) {
-				const condition = this.expressionToSql(f.joinCondition, context);
-				let join: string;
-				if (f instanceof FromFactorCrossJoin)
-					join = "CROSS JOIN";
-				else if (f instanceof FromFactorFullJoin)
-					join = "FULL JOIN";
-				else if (f instanceof FromFactorInnerJoin)
-					join = "JOIN";
-				else if (f instanceof FromFactorLeftJoin)
-					join = "LEFT JOIN";
-				else throw new Error("Unsupported join");
-
-				return `${left} ${join} ${right} ON ${condition}`;
-			}
-			else if (f instanceof FromFactorCrossJoin) {
-				return `${left} CROSS JOIN ${right}`;
-			};
-		}
-
-		throw new Error(`Unknown From Factor '${f}'`);
+		return this.fromFactorDispatcher.dispatch(f, context);
 	}
 
 	protected escapeValue(expr: Exprs.ValueExpression<AnyType>, context: ExpressionContext): string {
@@ -349,82 +359,86 @@ export abstract class SqlGenerator {
 		return result;
 	}
 
+	private expressionDispatcherInitialized = false;
+	private expressionDispatcher = new DynamicDispatcher<Exprs.Expression<AnyType>, ExpressionContext, string>();
+
 	private expressionToSqlAutoParenthesis(e: Exprs.Expression<AnyType>, context: ExpressionContext): string {
-		if (e instanceof Exprs.NamedExpressionWrapper) {
-			if (context.resolveNamedExpression)
-				return this.expressionToSql(e.expression, context);
-			else
-				return this.quoteColumnName(e.name);
-		}
-		if (e instanceof Exprs.ValueExpression) {
-			return this.escapeValue(e, context);
-		}
-		if (e instanceof Exprs.Column) {
-			const columnName = this.quoteColumnName(e.name);
-			if (context.isColumnNameUnambigous(e.name))
-				return columnName;
-			
-			const tableName = this.referToFromItem(e.fromItem);
-			return `${tableName}.${columnName}`;
-		}
-		if (e instanceof Exprs.FromItemExpression) {
-			const tableName = this.referToFromItem(e.fromItem, false);
-			return tableName;
-		}
-		if (e instanceof Exprs.AllExpression) {
-			const tableName = this.referToFromItem(e.fromItem);
-			return `${tableName}.*`;
-		}
-		if (e instanceof Exprs.BinaryOperatorExpression) {
-			const operator = e.operator;
+		if (!this.expressionDispatcherInitialized) {
+			this.expressionDispatcherInitialized = true;
 
-			const left = this.expressionToSql(e.left, context, e.precedenceLevel);
-			const right = this.expressionToSql(e.right, context, e.precedenceLevel);
+			this.expressionDispatcher
+				.register(Exprs.NamedExpressionWrapper, (e, context) => {
+					if (context.resolveNamedExpression)
+						return this.expressionToSql(e.expression, context);
+					else
+						return this.quoteColumnName(e.name);
+				})
+				.register(Exprs.ValueExpression, (e, context) => this.escapeValue(e, context))
+				.register(Exprs.Column, (e, context) => {
+					const columnName = this.quoteColumnName(e.name);
+					if (context.isColumnNameUnambigous(e.name))
+						return columnName;
 
-			return `${left} ${operator} ${right}`;
-		}
-		if (e instanceof Exprs.KnownFunctionInvocation) {
-			const functionName = e.functionName.toUpperCase();
-			const args = e.args.map(arg => this.expressionToSql(arg, context)).join(", ");
-			return `${functionName}(${args})`;
-		}
-		if (e instanceof Exprs.RetrievalQueryAsExpression) {
-			return `(${this.transformToSql(e.query, context.context)})`;
-		}
-		if (e instanceof Exprs.IsInValuesExpression) {
-			if (e.values.length === 0)
-				return this.expressionToSql(Exprs.val(false, true), context, e.precedenceLevel);
-			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
-			return `${arg} IN (${e.values.map(v => this.expressionToSql(v, context)).join(", ")})`;
-		}
-		if (e instanceof Exprs.IsInQueryExpression) {
-			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
-			return `${arg} IN (${this.transformToSql(e.query, context.context)})`;
-		}
-		if (e instanceof Exprs.LikeExpression) {
-			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
-			return `${arg} LIKE ${this.expressionToSql(e.like, context, e.precedenceLevel)}`;
-		}
-		if (e instanceof Exprs.NotExpression) {
-			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
-			return `NOT ${arg}`
-		}
-		if (e instanceof Exprs.IsNullExpression) {
-			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
-			return `${arg} IS NULL`;
-		}
-		if (e instanceof Exprs.IsNotNullExpression) {
-			const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
-			return `${arg} IS NOT NULL`;
-		}
-		if (e instanceof Exprs.JsonPropertyAccess) {
-			const arg = this.expressionToSql(e.expression, context, e.precedenceLevel);
-			return `${arg}->${this.escapeValue(Exprs.val(e.key, true), context)}`;
-		}
-		if (e instanceof Exprs.CastExpression) {
-			return this.expressionToSql(e.expression, context, e.precedenceLevel);
+					const tableName = this.referToFromItem(e.fromItem);
+					return `${tableName}.${columnName}`;
+				})
+				.register(Exprs.FromItemExpression, (e, context) => {
+					const tableName = this.referToFromItem(e.fromItem, false);
+					return tableName;
+				})
+				.register(Exprs.AllExpression, (e, context) => {
+					const tableName = this.referToFromItem(e.fromItem);
+					return `${tableName}.*`;
+				})
+				.register(Exprs.BinaryOperatorExpression, (e, context) => {
+					const operator = e.operator;
+
+					const left = this.expressionToSql(e.left, context, e.precedenceLevel);
+					const right = this.expressionToSql(e.right, context, e.precedenceLevel);
+
+					return `${left} ${operator} ${right}`;
+				})
+				.register(Exprs.KnownFunctionInvocation, (e, context) => {
+					const functionName = e.functionName.toUpperCase();
+					const args = e.args.map(arg => this.expressionToSql(arg, context)).join(", ");
+					return `${functionName}(${args})`;
+				})
+				.register(Exprs.RetrievalQueryAsExpression, (e, context) => `(${this.transformToSql(e.query, context.context)})`)
+				.register(Exprs.IsInValuesExpression, (e, context) => {
+					if (e.values.length === 0)
+						return this.expressionToSql(Exprs.val(false, true), context, e.precedenceLevel);
+					const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+					return `${arg} IN (${e.values.map(v => this.expressionToSql(v, context)).join(", ")})`;
+				})
+				.register(Exprs.IsInQueryExpression, (e, context) => {
+					const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+					return `${arg} IN (${this.transformToSql(e.query, context.context)})`;
+				})
+				.register(Exprs.LikeExpression, (e, context) => {
+					const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+					return `${arg} LIKE ${this.expressionToSql(e.like, context, e.precedenceLevel)}`;
+				})
+				.register(Exprs.NotExpression, (e, context) => {
+					const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+					return `NOT ${arg}`
+				})
+				.register(Exprs.IsNullExpression, (e, context) => {
+					const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+					return `${arg} IS NULL`;
+				})
+				.register(Exprs.IsNotNullExpression, (e, context) => {
+					const arg = this.expressionToSql(e.argument, context, e.precedenceLevel);
+					return `${arg} IS NOT NULL`;
+				})
+				.register(Exprs.JsonPropertyAccess, (e, context) => {
+					const arg = this.expressionToSql(e.expression, context, e.precedenceLevel);
+					return `${arg}->${this.escapeValue(Exprs.val(e.key, true), context)}`;
+				})
+				.register(Exprs.CastExpression, (e, context) => {
+					return this.expressionToSql(e.expression, context, e.precedenceLevel);
+				});
 		}
 
-		throw new Error(`not supported expression: ${e}`);
+		return this.expressionDispatcher.dispatch(e, context);
 	}
 }

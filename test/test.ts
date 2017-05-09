@@ -86,6 +86,12 @@ describe("Select", () => {
 			select(contacts.asExpression().toJson().prop("data").prop("key1").as("result")).from(contacts),
 			`SELECT ROW_TO_JSON(contacts)->'data'->'key1' AS result FROM contacts`
 		);
+
+		check(
+			select(contacts.$all).select(contactAddresses.asExpression().toJson().as("address"))
+				.from(contacts).leftJoin(contactAddresses).on({ id: contacts.id }),
+			`SELECT contacts.*, ROW_TO_JSON(contact_addresses) AS address FROM contacts LEFT JOIN contact_addresses ON contact_addresses.id = contacts.id`
+		);
 	});
 
 	it("should throw on invalid argument", () => {
@@ -290,6 +296,21 @@ describe("Where", () => {
 			`SELECT FROM contacts WHERE NOT (firstname = $1 AND lastname = $2)`, ["1", "4"]
 		);
 	});
+
+	it("should fail on invalid where arguments", () => {
+		assert.throws(() => {
+			select().where(4);
+		});
+		assert.throws(() => {
+			select().where("test");
+		});
+		assert.throws(() => {
+			select().where([1, 2]);
+		});
+		assert.throws(() => {
+			select().where(true);
+		});
+	})
 });
 
 function checkExpression(expr: Expression<any>, expected: string, args: any[]) {

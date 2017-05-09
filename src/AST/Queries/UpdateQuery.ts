@@ -40,13 +40,29 @@ export class UpdateQuery<TUpdatedColumns extends Row, TReturningColumns extends 
 		}, super.getState());
 	}
 
+	/**
+	 * Selects from a table. If previous tables are already specified, they are cross joined.
+	 * These tables can be used to for condition or value expressions.
+	 * @param table The table to select from.
+	 */
 	public from<TTableColumns>(table: FromItem<TTableColumns>): UpdateQuery<TUpdatedColumns, TReturningColumns, TTableColumns, TSingleColumn> {
 		this._from = FromFactor.crossJoin(this._from, table);
 		this.lastFromItem = table as any;
 		return this as any;
 	}
 
+	/**
+	 * Sets a new value for a column.
+	 * Use `defaultValue()` to reset a column to its default value.
+	 * 
+	 * @param column The column to update.
+	 * @param value The new value for the column.
+	 */
 	public set<TColumn extends keyof TUpdatedColumns>(column: TColumn, value: ExpressionOrInputValue<TUpdatedColumns[TColumn]>): this;
+	/**
+	 * Sets new values for specified columns.
+	 * @param obj The columns to update and their new values.
+	 */
 	public set(obj: {[TColumnName in keyof TUpdatedColumns]?: ExpressionOrInputValue<TUpdatedColumns[TColumnName]>}): this;
 	public set(columnOrObject: string | object, value?: ExpressionOrInputValue<any>): this {
 		if (typeof columnOrObject === "string") {

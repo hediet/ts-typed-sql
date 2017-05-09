@@ -9,7 +9,7 @@ export type GetInType<TType extends any> = TType["_inType"];
 export type GetOutType<TType extends any> = TType["_outType"];
 
 export abstract class Type<TInType, TOutType, TBrand extends string> {
-	public _brand: TBrand;
+	public readonly _brand: TBrand;
 	private _inType: TInType;
 	private _outType: TOutType;
 
@@ -46,8 +46,8 @@ export const tVoid = new VoidType();
 export type RecordTypeToJson<T extends { _brand: string }> = RecordTypeToJson2<T>["result"];
 export type RecordTypeToJson1<T extends { result: any }> = { [TName in keyof T]: T[TName]["result"] };
 export type RecordTypeToJson2<T extends { _brand: string }> =
-{ 
-	result:
+{
+	result: // result is required for TypeScript to accept recursion
 		(
 			{
 				record: RecordTypeToJson1<{ [TName in keyof T["_recordType"]]: RecordTypeToJson2<T["_recordType"][TName]> }>
@@ -57,7 +57,7 @@ export type RecordTypeToJson2<T extends { _brand: string }> =
 		)[T["_brand"]]
 };
 
-// let xx: RecordTypeToJson2<{ _brand: "record", _recordType: { p2: { _brand: "record", _recordType: { fooa: { _brand: "record", _recordType: { bla: IntegerType } } } } } }> = null!;
+// let test: RecordTypeToJson2<{ _brand: "record", _recordType: { p2: { _brand: "record", _recordType: { fooa: { _brand: "record", _recordType: { bla: IntegerType } } } } } }> = null!;
 
 
 export function tJson<T>(): Json<T> {
@@ -118,7 +118,6 @@ export class TextType extends Type<string, string, "text"> {
 export const tText = new TextType();
 
 
-
 export class IntegerType extends Type<number, number, "integer"> {
 
 	serialize(arg: number): string|number|boolean {
@@ -129,4 +128,18 @@ export class IntegerType extends Type<number, number, "integer"> {
 		return +arg;
 	}
 }
+
 export const tInteger = new IntegerType();
+
+
+export class DateType extends Type<Date, Date, "date"> {
+	serialize(arg: Date): string|number|boolean {
+		return arg.toString();
+	}
+
+	deserialize(arg: string|number|boolean): Date {
+		return new Date(""+ arg);
+	}
+}
+
+export const tDate = new DateType();

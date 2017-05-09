@@ -39,3 +39,25 @@ export function combine<T1, T2>(props: T1, and: T2): T1 & T2 {
 	}
 	return result;
 }
+
+export class DynamicDispatcher<TBase, TArgs, TResult> {
+	private registeredHandlers = new Map<Function, (subject: TBase, arg: TArgs) => TResult>();
+
+	public register<T extends TBase>(clazz: (new (...args: any[]) => T) | Function, handler: (subject: T, arg: TArgs) => TResult) {
+		this.registeredHandlers.set(clazz, handler);
+		return this;
+	}
+
+	public dispatch(obj: TBase, args: TArgs): TResult {
+		let proto = Object.getPrototypeOf(obj);
+		while (proto) {
+			const handler = this.registeredHandlers.get(proto.constructor);
+			if (handler) {
+				return handler(obj, args);
+			}
+			proto = Object.getPrototypeOf(proto);
+		}
+
+		throw new Error(`No handler was registered for '${obj}'.`);
+	}
+}

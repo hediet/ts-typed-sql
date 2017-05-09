@@ -5,8 +5,21 @@ import { Constructable } from "./Common";
 import { BooleanType } from "../Types";
 
 export interface WhereMixinInstance<TFromTblCols> {
+	/**
+	 * Sets where conditions.
+	 * @param obj The object that defines equals expressions.
+	 */
 	where(obj: Partial<MapExpressionOrInputValue<TFromTblCols>>): this;
+
+	/**
+	 * Sets where conditions.
+	 * @param conditions The condition expressions.
+	 */
 	where(...conditions: Expression<BooleanType>[]): this;
+
+	/**
+	 * Sets negated where conditions.
+	 */
 	whereNot(condition: Expression<BooleanType>, ...conditions: Expression<BooleanType>[]): this;
 }
 

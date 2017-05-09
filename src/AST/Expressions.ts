@@ -144,7 +144,15 @@ export function coalesce<T extends AnyType>(...expressions: Expression<T>[]): Ex
 export function val(value: string, preferEscaping?: boolean): ValueExpression<TextType>;
 export function val(value: boolean, preferEscaping?: boolean): ValueExpression<BooleanType>;
 export function val(value: number, preferEscaping?: boolean): ValueExpression<IntegerType>;
-export function val(value: string|boolean|number, preferEscaping: boolean = false) {
+export function val<T extends AnyType>(value: GetInType<T>, type: T, preferEscaping?: boolean): ValueExpression<T>;
+export function val(value: string|boolean|number, ...other: any[]) {
+	let preferEscaping: boolean;
+	if (other[0] instanceof Type) {
+		preferEscaping = !!other[1];
+		return new ValueExpression(other[0], value, preferEscaping);
+	}
+	preferEscaping = !!other[0];
+
 	let t: AnyType;
 	if (typeof value === "string") t = tText;
 	else if (typeof value === "boolean") t = tBoolean;
@@ -154,6 +162,10 @@ export function val(value: string|boolean|number, preferEscaping: boolean = fals
 	return new ValueExpression(t, value, preferEscaping);
 }
 
+export function jsonVal<T>(value: T) {
+	return val(value, tJson<T>());
+}
+
 export function defaultValue(): DefaultExpression { return new DefaultExpression(); }
 
 export function toCondition<TColumns>(fromItem: FromItem<TColumns>|undefined, args: (Expression<BooleanType>[]) | [ Partial<MapExpressionOrInputValue<TColumns>> ])
@@ -161,6 +173,8 @@ export function toCondition<TColumns>(fromItem: FromItem<TColumns>|undefined, ar
 
 	const firstArg = args[0];
 	if (firstArg && !(firstArg instanceof Expression)) {
+		if (typeof firstArg !== "object" || Array.isArray(firstArg)) throw new Error(`Where argument must be an object, but was '${firstArg}'.`);
+
 		return and(...Object.keys(firstArg).map(columnName => {
 			const expression = firstArg[columnName as keyof TColumns];
 			if (!fromItem) throw new Error("No table to select from specified.");
@@ -238,8 +252,6 @@ export type ExpressionOrInputValue<T extends AnyType> = GetInType<T>|Expression<
 export type MapExpressionOrInputValue<T extends { [key: string]: any }> = { [TKey in keyof T]: ExpressionOrInputValue<T[TKey]> };
 
 export class Variable<T extends AnyType> extends Expression<T> {
-	private _brand: "Variable";
-
 	constructor(public readonly name: string, type: T) { super(type); }
 }
 

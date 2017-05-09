@@ -40,11 +40,22 @@ export interface RowDescription { [columnName: string]: AnyType };
 
 export type RowDescriptionToRow<TColumns extends RowDescription> = TColumns;
 
+/**
+ * Declares a table.
+ * @param tableName The name of the table.
+ * @param requiredColumns Columns that need a value when inserting new rows.
+ */
 export function table<
 		TColumnsWithTypes1 extends RowDescription>(
 			tableName: string | TableName,
 			requiredColumns: TColumnsWithTypes1,
 		): TableCtor<RowDescriptionToRow<TColumnsWithTypes1>, {}>;
+/**
+ * Declares a table.
+ * @param tableName The name of the table.
+ * @param requiredColumns Columns that need a value when inserting new rows.
+ * @param optionalColumns Columns that don't need a value when inserting new rows.
+ */
 export function table<
 		TColumnsWithTypes1 extends RowDescription,
 		TColumnsWithTypes2 extends RowDescription>(

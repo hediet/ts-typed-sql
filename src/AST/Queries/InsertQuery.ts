@@ -26,14 +26,26 @@ export type InsertRowQuery<TRequiredColumns, TOptionalColumns> = RetrievalQuery<
 export class InsertQueryBuilder<TRequiredColumns extends Row, TOptionalColumns extends Row> {
 	constructor(private readonly table: Table<TRequiredColumns, TOptionalColumns>) { }
 
+	/**
+	 * Inserts one or more items.
+	 * @param items The items to be inserted.
+	 */
 	public value(...items: InsertRows<TRequiredColumns, TOptionalColumns>) {
 		return this.values(items);
 	}
 
+	/**
+	 * Inserts an array of items.
+	 * @param items The items to be inserted.
+	 */
 	public values(items: InsertRows<TRequiredColumns, TOptionalColumns>): InsertQuery<TRequiredColumns & TOptionalColumns, {}, NoColumnsSelected> {
 		return new InsertQuery<TRequiredColumns & TOptionalColumns, {}, NoColumnsSelected>(this.table, items);
 	}
 
+	/**
+	 * Uses a subquery to retrieve the items to be inserted.
+	 * @param query A query that returns the items to be inserted.
+	 */
 	public valuesFrom(query: InsertRowQuery<TRequiredColumns, TOptionalColumns>): InsertQuery<TRequiredColumns & TOptionalColumns, {}, NoColumnsSelected> {
 		return new InsertQuery<TRequiredColumns & TOptionalColumns, {}, NoColumnsSelected>(this.table, query);
 	}

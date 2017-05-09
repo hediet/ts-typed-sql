@@ -14,16 +14,31 @@ export class RetrievalQuery<TRow extends Row, TSingleColumn extends SingleColumn
 		}, super.getState());
 	}
 
+	/**
+	 * Sets an limit on how many rows are returned.
+	 * Overwrites any limit that was set before.
+	 * 
+	 * @param count The limit.
+	 */
 	public limit(count: ExpressionOrInputValue<IntegerType>): this {
 		this._limit = normalize(tInteger, count);
 		return this;
 	}
 
+	/**
+	 * Sets how many rows are skipped.
+	 * Overwrites any offset that was set before.
+	 * 
+	 * @param count The offset.
+	 */
 	public offset(count: ExpressionOrInputValue<IntegerType>): this {
 		this._offset = normalize(tInteger, count);
 		return this;
 	}
 
+	/**
+	 * Wraps this query as expression. The query must return exactly one row with exactly one column.
+	 */
 	public asExpression<TSingleColumn2 extends keyof TRow>
 		(this: RetrievalQuery<TRow, TSingleColumn2>): Expression<TRow[TSingleColumn2]> {
 		const column = this.returningColumns[this.singleColumn];

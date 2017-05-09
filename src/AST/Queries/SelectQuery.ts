@@ -38,6 +38,10 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 		}, super.getState());
 	}
 
+	/**
+	 * Selects from a table. If previous tables are already specified, they are cross joined.
+	 * @param table The table to select from.
+	 */
 	public from<TTableColumns>(table: FromItem<TTableColumns>):
 		SelectQuery<TSelectedCols, TTableColumns, TSingleColumn> {
 		this._from = FromFactor.crossJoin(this._from, table);
@@ -86,9 +90,18 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 		return this;
 	}
 
+	/**
+	 * Adds expressions to the order-by list of this query.
+	 * Use `expression.desc()` or `{ desc: "columnName" }` for descending order.
+	 * @param expressions The expressions to add to the order-by list.
+	 */
 	public orderBy(...expressions: (
 		Ordering<(Expression<any> | keyof TFromTblCols)> | Expression<any> | keyof TFromTblCols
 	)[]): this;
+	/**
+	 * Adds expressions to the order-by list of this query. The `expressionSelector` can be used to refer to already selected expressions.
+	 * @param expressionSelector A selector that must return the expressions to add to the order-by list.
+	 */
 	public orderBy(expressionSelector: (selectedColumns: RowToColumns<TSelectedCols>)
 		=> (Ordering<Expression<any>> | Expression<any>)[] | (Ordering<Expression<any>> | Expression<any>)): this;
 	public orderBy(...expressions: any[]): this {
@@ -115,9 +128,19 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 		return this;
 	}
 
-	public having(conditionSelector: (selectedColumns: RowToColumns<TSelectedCols>) => Expression<BooleanType>): this;
+	/**
+	 * Adds having-conditions.
+	 * In contrast to where-conditions, having-conditions are evaluated after grouping is done.
+	 * @param conditionSelector 
+	 */
 	public having(condition: Expression<BooleanType>, ...conditions: Expression<BooleanType>[]): this;
 
+	/**
+	 * Adds having-conditions.
+	 * In contrast to where-conditions, having-conditions are evaluated after grouping is done.
+	 * @param conditionSelector 
+	 */
+	public having(conditionSelector: (selectedColumns: RowToColumns<TSelectedCols>) => Expression<BooleanType>): this;
 	public having(...args: any[]): this {
 		let expression: Expression<BooleanType> | undefined = undefined;
 		if ((typeof args[0]) === "function") {
@@ -131,7 +154,16 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 		return this;
 	}
 
+	/**
+	 * Adds expressions to the group-by list of this query.
+	 * @param expressions The expressions to add.
+	 */
 	public groupBy(...expressions: (Expression<AnyType> | keyof TFromTblCols)[]): this;
+
+	/**
+	 * Adds expressions to the group-by list of this query. The `expressionSelector` can be used to refer to already selected expressions.
+	 * @param expressionSelector A selector that must return the expressions to add to the group-by list.
+	 */
 	public groupBy(expressionSelector: (selectedColumns: RowToColumns<TSelectedCols>) => Expression<AnyType> | Expression<AnyType>[]): this;
 	public groupBy(...expressions: any[]): this {
 		const exprs = (() => {
@@ -149,6 +181,10 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 	}
 }
 
+/**
+ * Creates a SELECT query that selects from the given table.
+ * @param table The table to select from.
+ */
 export function from<TTableColumns>(table: FromItem<TTableColumns>) {
 	const result = new SelectQuery<{}, {}, NoColumnsSelected>();
 	return result.from(table);

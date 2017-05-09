@@ -68,16 +68,23 @@ export function JoinMixin<BC extends Constructable<object>>(Base: BC): Construct
 }
 
 export class JoinConditionBuilder<TFromItemColumns, TReturn> {
-	constructor(private readonly fromItem: FromItem<any>, private readonly onJoin: (joined: FromItem<any>, condition: Expression<BooleanType>) => TReturn) {}
+	constructor(private readonly fromItem: FromItem<any>, private readonly onJoin: (joined: FromItem<any>, condition: Expression<BooleanType>) => TReturn) { }
 
 	/**
 	 * Specifies the condition of the join.
-	 * A condition must be set.
+	 * At least one condition must be set.
 	 * 
 	 * @param condition The condition.
 	 * @param furtherConditions More conditions.
 	 */
 	public on(condition: Expression<BooleanType>, ...furtherConditions: Expression<BooleanType>[]): TReturn;
+	/**
+	 * Specifies the condition of the join.
+	 * At least one property must be set.
+	 * 
+	 * @param condition An object that represents multiple equals conditions.
+	 *	Each property refers to a column of the joined table, its value to the expression the column must be equal to.
+	 */
 	public on(condition: Partial<MapExpressionOrInputValue<TFromItemColumns>>): TReturn;
 	public on(...conditions: any[]): TReturn {
 		const condition = toCondition(this.fromItem, conditions);

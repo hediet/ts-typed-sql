@@ -41,5 +41,10 @@
   "files": [
     "./dist/src"
   ],
-  "repository": "hediet/ts-typed-sql"
+  "repository": "hediet/ts-typed-sql",
+  "nyc": {
+    "exclude": [
+      "website"
+    ]
+  }
 }

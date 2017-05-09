@@ -62,5 +62,8 @@ body {
 	padding-left: 5px;
 	background-color: lighten(black, 95%);
 	font-size: 14px;
-}
 
+	.error {
+		color: red;
+	}
+}

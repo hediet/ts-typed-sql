@@ -32,7 +32,7 @@ module.exports = {
 	},
 	plugins: [
 		// generates two bundles: One for ./src code, one for node_modules code.
-		new SplitByPathPlugin([{ name: 'node_modules-bundle', path: r`node_modules` }],
+		new SplitByPathPlugin([{ name: 'thirdparty-bundle', path: r`node_modules` }],
 			{ manifest: 'app-entry' }
 		),
 		// generates an index.html

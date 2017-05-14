@@ -1,21 +1,33 @@
 import { Expression, Column, ColumnBoundToExpression, AllExpression, ExpressionTypeOf, FromItemExpression } from "./Expressions";
 import { toObject, objectEntries, objectValues } from "../Helpers";
 import { Query } from "./Queries/Query";
-import { AnyType, Record, BooleanType } from "./Types";
+import { AnyType, BooleanType, GetInType, GetOutType, MapOutType, Record, Type } from './Types';
+
+export function fromItemTypes<TColumns extends HardRow>(fromItem: FromItem<TColumns>): TColumns
+export function fromItemTypes<TColumns extends HardRow, TColumnNames extends string>(fromItem: FromItem<TColumns>, columns: TColumnNames[]): { [TName in TColumnNames]: TColumns[TName] }
+export function fromItemTypes<TColumns extends HardRow>(fromItem: FromItem<TColumns>, columns: (keyof TColumns)[] = []): TColumns {
+	return toObject(objectValues(fromItem.$columns).filter(c => columns.indexOf(c.name) !== -1), k => k.name, k => k.type);
+}
 
 export interface Row {
 	[name: string]: any;//AnyType;
+}
+
+export interface HardRow {
+	[name: string]: AnyType;
 }
 
 export interface Columns {
 	[name: string]: any;//Column<string, AnyType>;
 }
 
-export type RowToColumns<TColumns extends Row> =
-	{[TName in keyof TColumns]: Column<TName, TColumns[TName]> };
+export type RowToColumns<TColumns extends HardRow>
+	= {[TName in keyof TColumns]: Column<TName, TColumns[TName]> };
 
 export type ColumnsToRow<TColumns extends Columns>
 	= {[TName in keyof TColumns]: ExpressionTypeOf<TColumns[TName]> };
+
+export type ColumnsToOutRow<TColumns extends Columns> = MapOutType<ColumnsToRow<TColumns>>;
 
 export class FromFactor {
 	_brand: "FromFactor";
@@ -61,10 +73,10 @@ export class FromFactorFullJoin extends FromFactorAbstractConditionalJoin { publ
 export class FromFactorInnerJoin extends FromFactorAbstractConditionalJoin { public getType() { return "inner"; } };
 export class FromFactorCrossJoin extends FromFactorAbstractJoin { public getType() { return "cross"; } };
 
-export type FromItemToRow<TFromItem extends FromItem<any>> =
-	{[TName in keyof TFromItem["$columns"]]: ExpressionTypeOf<TFromItem["$columns"][TName]> };
+export type FromItemToOutRow<TFromItem extends FromItem<any>> =
+	{[TName in keyof TFromItem["$columns"]]: GetOutType<ExpressionTypeOf<TFromItem["$columns"][TName]>> };
 
-export abstract class FromItem<TColumns extends Row> extends FromFactor {
+export abstract class FromItem<TColumns extends HardRow> extends FromFactor {
 	public readonly $columns: RowToColumns<TColumns>;
 	public readonly $all: AllExpression<TColumns> = new AllExpression(this);
 
@@ -87,12 +99,20 @@ export abstract class FromItem<TColumns extends Row> extends FromFactor {
 		return result;
 	}
 
-	public asNullable(): FromItemCtor<{[TKey in keyof TColumns]: TColumns[TKey] | null }> {
-		return this as any;
+	public asNullable(): FromItemCtor<{[TKey in keyof TColumns]: Type<GetInType<TColumns[TKey]>, GetOutType<TColumns[TKey]>|null, TColumns[TKey]["_brand"]> }> {
+		return this as any; //TODO!!!
+		//const nullableColumns = toObject(objectEntries(this.$columns), k => k[0], k => k[1].cast(k[1].type.orNull()));
+		//return new NullableFromItem(nullableColumns, this.castToColumns) as any;
 	}
 
 	public asExpression(): Expression<Record<TColumns>> {
 		return new FromItemExpression<TColumns>(this);
+	}
+}
+
+export class NullableFromItem<TColumns extends Row> extends FromItem<TColumns> {
+	constructor(columns: RowToColumns<TColumns>, public readonly fromItem: FromItem<TColumns>, castToColumns: boolean) {
+		super(columns, castToColumns);
 	}
 }
 
@@ -112,7 +132,7 @@ export class NamedFromItem<TColumns extends Row> extends FromItem<TColumns> {
 	}
 }
 
-export class QueryFromItem<TColumns> extends FromItem<TColumns> {
+export class QueryFromItem<TColumns extends HardRow> extends FromItem<TColumns> {
 	constructor(public readonly $name: string, columns: RowToColumns<TColumns>, public readonly query: Query<TColumns, any>, castToColumns: boolean) {
 		super(columns, castToColumns);
 	}

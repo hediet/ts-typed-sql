@@ -1,5 +1,5 @@
 import { Expression, Column, NamedExpression, NamedExpressionNameOf, ExpressionTypeOf, AllExpression } from "../Expressions";
-import { FromItem } from "../FromFactor";
+import { FromItem, HardRow } from "../FromFactor";
 import { objectValues } from "../../Helpers";
 import { AnyType } from "../Types";
 
@@ -14,7 +14,7 @@ export type Constructable<T> = new (...args: any[]) => T;
  * Otherwise, it ensures that `expression` is an `Expression` and returns it.
  * @private
  */
-export function resolveColumnReference<TExpr extends Expression<any>, TFromTblCols>(
+export function resolveColumnReference<TExpr extends Expression<any>, TFromTblCols extends HardRow>(
 	fromItem: FromItem<TFromTblCols> | undefined, expression: TExpr | keyof TFromTblCols): TExpr | Column<string, AnyType> {
 
 	if (expression instanceof Expression) return expression;
@@ -35,7 +35,7 @@ export function resolveColumnReference<TExpr extends Expression<any>, TFromTblCo
  * An helper method for select or returning.
  * @private
  */
-export function handleSelect<TFromTblCols>(
+export function handleSelect<TFromTblCols extends HardRow>(
 	fromItem: FromItem<TFromTblCols> | undefined,
 	selectedExpressions: ((keyof TFromTblCols) | NmdExpr | AllExpression<object>)[],
 	allReturningColumns: { [exprName: string]: NamedExpression<string, AnyType> },

@@ -1,6 +1,6 @@
 {
   "name": "@hediet/typed-sql",
-  "version": "0.2.1",
+  "version": "0.2.9",
   "description": "A fully typed sql builder. Works best with TypeScript an Visual Studio Code.",
   "main": "dist/src/index.js",
   "directories": {
@@ -39,7 +39,8 @@
   "license": "MIT",
   "types": "src/index.ts",
   "files": [
-    "./dist/src"
+    "dist/src",
+    "src"
   ],
   "repository": "hediet/ts-typed-sql",
   "nyc": {

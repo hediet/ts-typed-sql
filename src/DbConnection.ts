@@ -71,9 +71,9 @@ export class TransactingQueryService extends DbQueryInterface {
 
 	public get isTransactionOpen(): boolean { return this._isTransactionOpen; }
 
-	public exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
-	public exec<TColumns>(statement: SqlStatement): Promise<void>;
-	public exec<TColumns>(statement: SqlStatement): Promise<TColumns[]> | Promise<void> {
+	public exec<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow>[]>;
+	public exec<TRow extends Row>(statement: SqlStatement): Promise<void>;
+	public exec<TRow extends Row>(statement: SqlStatement): Promise<MapOutType<TRow>[]> | Promise<void> {
 		if (!this._isTransactionOpen) throw new Error(`Could not execute statement '${statement}': Transaction already has been either committed or rolled back.`);
 		return super.exec(statement);
 	}

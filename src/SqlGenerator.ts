@@ -435,7 +435,10 @@ export abstract class SqlGenerator {
 					return `${arg}->${this.escapeValue(Exprs.val(e.key, true), context)}`;
 				})
 				.register(Exprs.CastExpression, (e, context) => {
-					return this.expressionToSql(e.expression, context, e.precedenceLevel);
+					if (e.isHiddenCast)
+						return this.expressionToSql(e.expression, context, e.precedenceLevel);
+					
+					return this.expressionToSql(e.expression, context) + "::" + e.type.name;
 				});
 		}
 

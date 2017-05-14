@@ -1,6 +1,6 @@
 import {
 	FromItem, Row, FromFactor,
-	FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin, FromFactorCrossJoin, getColumn
+	FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin, FromFactorCrossJoin, getColumn, HardRow
 } from "../FromFactor";
 import { Table } from "../Table";
 import { Expression, ExpressionOrInputValue, AllExpression, toCondition, and, normalize, NamedExpression, NamedExpressionNameOf, Column } from "../Expressions";
@@ -45,7 +45,7 @@ export class UpdateQuery<TUpdatedColumns extends Row, TReturningColumns extends 
 	 * These tables can be used to for condition or value expressions.
 	 * @param table The table to select from.
 	 */
-	public from<TTableColumns>(table: FromItem<TTableColumns>): UpdateQuery<TUpdatedColumns, TReturningColumns, TTableColumns, TSingleColumn> {
+	public from<TTableColumns extends HardRow>(table: FromItem<TTableColumns>): UpdateQuery<TUpdatedColumns, TReturningColumns, TTableColumns, TSingleColumn> {
 		this._from = FromFactor.crossJoin(this._from, table);
 		this.lastFromItem = table as any;
 		return this as any;

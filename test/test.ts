@@ -1,7 +1,8 @@
-import { unionAll } from '../src/AST/Queries/RetrievalQuery';
+import { objectValues, toObject } from '../src/Helpers';
 import {
-	select, from, table, DbConnection, insertInto,
-	update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, Query, PostgreSqlGenerator, values, Expression, tInteger, tText, tJson
+	fromItemTypes,
+	unionAll, GetOutType, select, from, table, DbConnection, insertInto, FromItemToOutRow, MapOutType, RowToColumns,
+	update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, Query, PostgreSqlGenerator, values, Expression, tInteger, tText, tJson, ExpressionTypeOf, FromItem, HardRow, tBoolean
 } from "../src/index";
 import * as assert from "assert";
 
@@ -25,12 +26,13 @@ const contactAddresses = table("contact_addresses",
 	}
 );
 
-function check<T2>(query: Query<T2, any>, expectedSql: string, args: any[] = []) {
+function check<T2>(query: Query<T2, any>, expectedSql: string, args: any[] = []): MapOutType<T2> {
 	const generator = new PostgreSqlGenerator({ shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });
 	const sql = generator.toSql(query);
 
 	assert.equal(sql.sql, expectedSql);
 	assert.deepEqual(sql.parameters, args);
+	return {} as any;
 }
 
 describe("Select", () => {
@@ -110,6 +112,10 @@ describe("Select", () => {
 
 	describe("Joins", () => {
 		const c = contacts.as("c").asNullable();
+
+		let row: FromItemToOutRow<typeof c> = {} as any;
+		row.firstname = null;
+		row.firstname = "test";
 
 		it("should support LEFT JOIN", () => {
 			check(
@@ -363,7 +369,8 @@ describe("Expressions", () => {
 	});
 
 	it("should support literal values", () => {
-		//checkExpression(val(null, true), `null`, []);
+		checkExpression(val(null), `$1`, [null]);
+		checkExpression(val(null, true), `null`, []);
 		checkExpression(val(true, true), `true`, []);
 		checkExpression(val(1, true), `1`, []);
 		checkExpression(val("1", true), `'1'`, []);
@@ -371,7 +378,15 @@ describe("Expressions", () => {
 		checkExpression(val("'", true), `''''`, []);
 	});
 
+	it("should support narrow", () => {
+		const numberOrNull: number|null = 10 as any;
+		const expr = val(numberOrNull, tInteger.orNull()).narrow<number>();
+		let val2: GetOutType<ExpressionTypeOf<typeof expr>>;
+		val2 = 10; // should typecheck
+		checkExpression(expr, "$1", [10]);
+	});
 });
+
 
 describe("Values", () => {
 	it("should support values", () => {
@@ -381,6 +396,20 @@ describe("Values", () => {
 			`SELECT a, b FROM (VALUES ($1, $2), ($3, $4)) AS v(a, b)`, [ 1, 2, 1, 3 ]
 		);
 	});
+
+	it("should work", () => {
+		const products = table({ name: "products" }, 
+			{ name: tText, price: tInteger }
+		);
+		const c = values(fromItemTypes(products, [ "name", "price" ]),
+			[{ name: "123", price: 1 }, { name: "345", price: 2 }]).as("c");
+
+		check(
+			update(products).set({ price: c.price.cast(tInteger) }).from(c).where({ price: 1 }), 
+			"UPDATE products SET price = c.price::integer FROM (VALUES ($1, $2), ($3, $4)) AS c(name, price) WHERE c.price = $5",
+			["123", 1, "345", 2, 1]
+		);
+	})
 });
 
 describe("Update", () => {

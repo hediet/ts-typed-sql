@@ -1,4 +1,4 @@
-import { FromItem } from "../FromFactor";
+import { FromItem, HardRow } from "../FromFactor";
 import { Query } from "./Query";
 import { MapExpressionOrInputValue, Expression, and, toCondition } from "../Expressions";
 import { Constructable } from "./Common";
@@ -23,7 +23,7 @@ export interface WhereMixinInstance<TFromTblCols> {
 	whereNot(condition: Expression<BooleanType>, ...conditions: Expression<BooleanType>[]): this;
 }
 
-export function WhereMixin<BC extends Constructable<object>, TFromTblCols>(Base: BC): Constructable<WhereMixinInstance<TFromTblCols>> & BC {
+export function WhereMixin<BC extends Constructable<object>, TFromTblCols extends HardRow>(Base: BC): Constructable<WhereMixinInstance<TFromTblCols>> & BC {
 	return class extends Base {
 		protected _whereCondition: Expression<BooleanType> | undefined;
 		protected lastFromItem: FromItem<TFromTblCols> | undefined;

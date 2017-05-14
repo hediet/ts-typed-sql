@@ -1,5 +1,5 @@
 import { Ordering } from "./Ordering";
-import { FromItem, Row, getColumn } from "./FromFactor";
+import { FromItem, Row, getColumn, HardRow } from "./FromFactor";
 import { RetrievalQuery } from "./Queries/RetrievalQuery";
 import { Table } from "./Table";
 import {
@@ -18,7 +18,11 @@ import {
 	tVoid,
 	VoidType,
 	Type,
-	tRecord
+	tRecord,
+	NullType,
+	tNull,
+	StandaloneNullType,
+	GetOutType
 } from './Types';
 
 export type ExpressionTypeOf<T extends Expression<any>> = T["type"];
@@ -33,8 +37,8 @@ export abstract class Expression<T extends AnyType> {
 
 	public get precedenceLevel(): number { return 0; }
 
-	public cast<T2 extends AnyType>(type: T2): Expression<T2> { return new CastExpression(this, type); }
-	public narrow<T2 extends T>(): Expression<T2> { return this as any; }
+	public cast<T2 extends AnyType>(type: T2, isCastHidden: boolean = false): Expression<T2> { return new CastExpression(this, type, isCastHidden); }
+	public narrow<T2 extends GetOutType<T>>(): Expression<Type<GetInType<T>, T2, T["_brand"]>> { return this as any; }
 
 	public as<TName extends string>(name: TName): NamedExpression<TName, T> {
 		return new NamedExpressionWrapper<TName, T>(name, this); }
@@ -99,7 +103,7 @@ export abstract class Expression<T extends AnyType> {
 export class CastExpression<T extends AnyType> extends Expression<T> {
 	get precedenceLevel() { return this.expression.precedenceLevel; }
 
-	constructor(public readonly expression: Expression<AnyType>, newType: T) {
+	constructor(public readonly expression: Expression<AnyType>, newType: T, public readonly isHiddenCast: boolean) {
 		super(newType);
 	}
 }
@@ -141,11 +145,12 @@ export function coalesce<T extends AnyType>(...expressions: Expression<T>[]): Ex
 	return new KnownFunctionInvocation("coalesce", expressions, expressions[expressions.length - 1].type);
 }
 
+export function val(value: null, preferEscaping?: boolean): ValueExpression<StandaloneNullType>;
 export function val(value: string, preferEscaping?: boolean): ValueExpression<TextType>;
 export function val(value: boolean, preferEscaping?: boolean): ValueExpression<BooleanType>;
 export function val(value: number, preferEscaping?: boolean): ValueExpression<IntegerType>;
 export function val<T extends AnyType>(value: GetInType<T>, type: T, preferEscaping?: boolean): ValueExpression<T>;
-export function val(value: string|boolean|number, ...other: any[]) {
+export function val(value: string|boolean|number|null, ...other: any[]) {
 	let preferEscaping: boolean;
 	if (other[0] instanceof Type) {
 		preferEscaping = !!other[1];
@@ -157,6 +162,7 @@ export function val(value: string|boolean|number, ...other: any[]) {
 	if (typeof value === "string") t = tText;
 	else if (typeof value === "boolean") t = tBoolean;
 	else if (typeof value === "number") t = tInteger;
+	else if (value === null) t = tNull;
 	else throw new Error(`Unsupported value: '${value}'.`);
 
 	return new ValueExpression(t, value, preferEscaping);
@@ -168,7 +174,7 @@ export function jsonVal<T>(value: T) {
 
 export function defaultValue(): DefaultExpression { return new DefaultExpression(); }
 
-export function toCondition<TColumns>(fromItem: FromItem<TColumns>|undefined, args: (Expression<BooleanType>[]) | [ Partial<MapExpressionOrInputValue<TColumns>> ])
+export function toCondition<TColumns extends HardRow>(fromItem: FromItem<TColumns>|undefined, args: (Expression<BooleanType>[]) | [ Partial<MapExpressionOrInputValue<TColumns>> ])
 		: Expression<BooleanType>|undefined {
 
 	const firstArg = args[0];

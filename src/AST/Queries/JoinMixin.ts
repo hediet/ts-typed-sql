@@ -1,6 +1,6 @@
 import { BooleanType } from '../Types';
 import { Expression, ExpressionOrInputValue, ExpressionTypeOf, toCondition, MapExpressionOrInputValue } from "../Expressions";
-import { FromItem, FromFactor, FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin } from "../FromFactor";
+import { FromItem, FromFactor, FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin, HardRow } from "../FromFactor";
 import { Constructable } from "./Common";
 
 export interface JoinMixinInstance {
@@ -16,7 +16,7 @@ export interface JoinMixinInstance {
 	 * 	yield row(null, j)
 	 * ```
 	 */
-	fullJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+	fullJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
 
 	/**
 	 * Performs a left join on the current query (`cur`) and a specified table (`joined`).
@@ -28,7 +28,7 @@ export interface JoinMixinInstance {
 	 * 	yield row(r, null)
 	 * ```
 	 */
-	leftJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+	leftJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
 
 	/**
 	 * Performs an inner join on the current query (`cur`) and a specified table (`joined`).
@@ -38,7 +38,7 @@ export interface JoinMixinInstance {
 	 * 	yield row(r, j)
 	 * ```
 	 */
-	innerJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+	innerJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
 }
 
 export function JoinMixin<BC extends Constructable<object>>(Base: BC): Constructable<JoinMixinInstance> & BC {
@@ -53,15 +53,15 @@ export function JoinMixin<BC extends Constructable<object>>(Base: BC): Construct
 			}
 		}
 
-		public fullJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		public fullJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
 			return new JoinConditionBuilder(fromItem, this.curriedOnJoin(FromFactorFullJoin));
 		}
 
-		public leftJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		public leftJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
 			return new JoinConditionBuilder(fromItem, this.curriedOnJoin(FromFactorLeftJoin));
 		}
 
-		public innerJoin<TFromItemColumns>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		public innerJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
 			return new JoinConditionBuilder(fromItem, this.curriedOnJoin(FromFactorInnerJoin));
 		}
 	};

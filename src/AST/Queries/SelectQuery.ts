@@ -5,7 +5,7 @@ import {
 } from "../Expressions";
 import {
 	FromItem, FromFactor, Row, RowToColumns,
-	FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin, FromFactorCrossJoin
+	FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin, FromFactorCrossJoin, HardRow
 } from "../FromFactor";
 import { RetrievalQuery } from "./RetrievalQuery";
 import { NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
@@ -42,7 +42,7 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 	 * Selects from a table. If previous tables are already specified, they are cross joined.
 	 * @param table The table to select from.
 	 */
-	public from<TTableColumns>(table: FromItem<TTableColumns>):
+	public from<TTableColumns extends HardRow>(table: FromItem<TTableColumns>):
 		SelectQuery<TSelectedCols, TTableColumns, TSingleColumn> {
 		this._from = FromFactor.crossJoin(this._from, table);
 		this.lastFromItem = table as any;
@@ -185,7 +185,7 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
  * Creates a SELECT query that selects from the given table.
  * @param table The table to select from.
  */
-export function from<TTableColumns>(table: FromItem<TTableColumns>) {
+export function from<TTableColumns extends HardRow>(table: FromItem<TTableColumns>) {
 	const result = new SelectQuery<{}, {}, NoColumnsSelected>();
 	return result.from(table);
 }

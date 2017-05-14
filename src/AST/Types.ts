@@ -13,6 +13,8 @@ export abstract class Type<TInType, TOutType, TBrand extends string> {
 	private _inType: TInType;
 	private _outType: TOutType;
 
+	public abstract name: string;
+
 	public abstract serialize(arg: TInType): string|number|boolean|null;
 	public abstract deserialize(arg: string|number|boolean): TOutType;
 
@@ -22,6 +24,8 @@ export abstract class Type<TInType, TOutType, TBrand extends string> {
 }
 
 export class NullType<TInType, TOutType, TBrand extends string> extends Type<TInType|null, TOutType|null, TBrand|"null"> {
+	public name = "null";
+
 	constructor(private readonly type: Type<TInType, TOutType, TBrand>) {
 		super();
 	}
@@ -37,7 +41,25 @@ export class NullType<TInType, TOutType, TBrand extends string> extends Type<TIn
 	}
 }
 
+export class StandaloneNullType extends Type<null, null, "null"> {
+	public name = "null";
+
+	public serialize(arg: null): string|number|boolean|null {
+		if (arg === null) return null;
+		throw new Error("Can only serialize null.");
+	}
+
+	public deserialize(arg: string|number|boolean|null): null {
+		if (arg === null) return null;
+		throw new Error("Can only deserialize null.");
+	}
+}
+
+export const tNull = new StandaloneNullType();
+
 export class VoidType extends Type<void, void, "void"> {
+	public name = "void";
+
 	public serialize(arg: void): string|number|boolean|null { throw new Error("Void type does not support serialization"); }
 	public deserialize(arg: string|number|boolean): void { throw new Error("Void type does not support deserialization"); }
 }
@@ -66,6 +88,8 @@ export function tJson<T>(): Json<T> {
 
 export class Json<T extends any> extends Type<T, T, "json"> {
 
+	public name = "JSON";
+
 	serialize(arg: T): string|number|boolean {
 		return JSON.stringify(arg);
 	}
@@ -78,6 +102,8 @@ export class Json<T extends any> extends Type<T, T, "json"> {
 }
 
 export class Record<T> extends Type<never, string, "record"> {
+	public name = "RECORD";
+
 	_recordType: T;
 
 	serialize(arg: never): string|number|boolean {
@@ -94,6 +120,7 @@ export function tRecord<T>() {
 }
 
 export class BooleanType extends Type<boolean, boolean, "boolean"> {
+	public name = "boolean";
 
 	serialize(arg: boolean): string|number|boolean {
 		return arg;
@@ -106,6 +133,7 @@ export class BooleanType extends Type<boolean, boolean, "boolean"> {
 export const tBoolean = new BooleanType();
 
 export class TextType extends Type<string, string, "text"> {
+	public name = "text";
 
 	serialize(arg: string): string|number|boolean {
 		return arg;
@@ -117,8 +145,42 @@ export class TextType extends Type<string, string, "text"> {
 }
 export const tText = new TextType();
 
+export class StringEnumType<T extends string> extends Type<T, T, "string_enum"> {
+	public name = "text";
+
+	serialize(arg: T): string|number|boolean {
+		return arg;
+	}
+
+	deserialize(arg: string|number|boolean): T {
+		return "" + arg as T;
+	}
+}
+
+export function tStringEnum<T extends string>(): StringEnumType<T> {
+	return new StringEnumType<T>();
+}
+
+
+export class IntegerEnumType<T extends number> extends Type<T, T, "integer_enum"> {
+	public name = "numeric";
+
+	serialize(arg: T): string|number|boolean {
+		return arg;
+	}
+
+	deserialize(arg: string|number|boolean): T {
+		return +arg as T;
+	}
+}
+
+export function tIntegerEnum<T extends number>(): IntegerEnumType<T> {
+	return new IntegerEnumType<T>();
+}
+
 
 export class IntegerType extends Type<number, number, "integer"> {
+	public name = "integer";
 
 	serialize(arg: number): string|number|boolean {
 		return arg;
@@ -132,7 +194,40 @@ export class IntegerType extends Type<number, number, "integer"> {
 export const tInteger = new IntegerType();
 
 
+
+export class BigIntType extends Type<string, string, "bigint"> {
+	public name = "bigint";
+
+	serialize(arg: string): string|number|boolean {
+		return arg;
+	}
+
+	deserialize(arg: string|number|boolean): string {
+		return "" + arg;
+	}
+}
+
+export const tBigInt = new BigIntType();
+
+
+export class NumericType extends Type<number, number, "numeric"> {
+	public name = "numeric";
+
+	serialize(arg: number): string|number|boolean {
+		return arg;
+	}
+
+	deserialize(arg: string|number|boolean): number {
+		return +arg;
+	}
+}
+
+export const tNumeric = new NumericType();
+
+
 export class DateType extends Type<Date, Date, "date"> {
+	public name = "date";
+
 	serialize(arg: Date): string|number|boolean {
 		return arg.toString();
 	}

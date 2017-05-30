@@ -311,7 +311,7 @@ export abstract class SqlGenerator {
 
 					let sql = `(${this.transformToSql(f.query, context.context)}) AS ${newName}`;
 					if (isCastToColumns(f))
-						sql += `(${Object.keys(f.$columns).join(", ")})`;
+						sql += `(${Object.keys(f.$columns).map(n => this.quoteColumnName(n)).join(", ")})`;
 					return sql;
 				})
 				.register(FromFactorAbstractJoin, (f, context) => {

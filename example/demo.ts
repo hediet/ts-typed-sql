@@ -72,6 +72,8 @@ const pool = new pg.Pool({
 				.select(concat(contacts.firstname, val(" ", true), contacts.lastname).as("fullname"))
 		);
 
+		await dbCon.exec(select(contacts.firstname.toLower(), contacts.data));
+
 		await dbCon.exec(
 			deleteFrom(contacts).where(contacts.id.isEqualTo(
 				from(contacts).where({ id: aryaId }).select(contacts.father_id).asExpression().cast(tInteger)

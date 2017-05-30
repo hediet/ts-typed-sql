@@ -15,6 +15,8 @@ import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
 import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
 import { secondWithTypeOfFirst } from "../../Helpers";
 
+export interface ErrorMessage<TMsg> { msg: TMsg; }
+
 export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TSingleColumn extends SingleColumn<TSelectedCols>>
 	extends JoinMixin(
 		WhereMixin<Constructable<RetrievalQuery<TSelectedCols, TSingleColumn>>, TFromTblCols>(
@@ -48,6 +50,7 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 		this.lastFromItem = table as any;
 		return this as any;
 	}
+
 
 	/** Selects all columns from the given table. */
 	public select<T extends Row>(table: AllExpression<T>): SelectQuery<Simplify<TSelectedCols & {[TName in keyof T]: T[TName]}>, TFromTblCols, MoreThanOneColumnSelected>;
@@ -84,6 +87,8 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 
 	/** Selects columns that are currently in scope. */
 	public select<TColumnNames extends keyof TFromTblCols>(...columns: TColumnNames[]): SelectQuery<Simplify<TSelectedCols & {[TName in TColumnNames]: TFromTblCols[TName]}>, TFromTblCols, MoreThanOneColumnSelected>;
+	
+	public select(this: ErrorMessage<"Expressions must have names. Use expr.as('name').">, ...expr: Expression<AnyType>[]);
 
 	public select(...args: ((keyof TFromTblCols) | NmdExpr | AllExpression<any>)[]): any {
 		handleSelect(this.lastFromItem, args, this.returningColumns as any, this.selectedExpressions);

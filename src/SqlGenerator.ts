@@ -303,7 +303,7 @@ export abstract class SqlGenerator {
 
 					let sql = `${oldName} AS ${newName}`;
 					if (isCastToColumns(f))
-						sql += `(${Object.keys(f.$columns).join(", ")})`;
+						sql += `(${Object.keys(f.$columns).map(n => this.quoteColumnName(n)).join(", ")})`;
 					return sql;
 				})
 				.register(QueryFromItem, (f, context) => {

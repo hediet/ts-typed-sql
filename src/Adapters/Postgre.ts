@@ -1,4 +1,4 @@
-import { toObject } from '../Helpers';
+import { isLoggingEnabled, log, logFull, toObject } from '../Helpers';
 import { RetrievalQuery } from '../AST/Queries/RetrievalQuery';
 import { AnyType, MapOutType } from '../AST/Types';
 import { SqlStatement } from '../AST/SqlStatement';
@@ -39,6 +39,12 @@ export class PostgreQueryService implements DbQueryService {
 	private async execClient(query: SqlStatement, client?: pg.Client): Promise<any> {
 		const { sql:queryText, parameters } = this.sqlGenerator.toSql(query);
 		const resultRows = new Deferred<any[]>();
+
+		if (isLoggingEnabled()) {
+			logFull("Executing SQL query '%s' with args %o", queryText, parameters);
+			log("Executing SQL query '%s' with args %o" + (parameters.length > 20 ? "..." : ""), queryText.substr(0, 400) + (queryText.length > 400 ? "..." : ""), parameters.slice(0, 20));
+		}
+
 		this.onSqlStatementEmitter.emit(this, { sql: queryText, parameters: parameters, query: query, resultRows: resultRows.value });
 
 		const result = await (client ? client.query(queryText, parameters) : this.pool.query(queryText, parameters));

@@ -248,21 +248,27 @@ describe("Select", () => {
 	});
 
 	describe("Union", () => {
-		it("should support single union", () => {
-			unionAll(from(contacts).select("id")),
-			"SELECT id FROM contacts"
+		it("should support a single union", () => {
+			check(
+				unionAll(from(contacts).select("id")),
+				"SELECT id FROM contacts"
+			);
 		});
 
-		it("should support two union", () => {
-			unionAll(from(contacts).select("id").limit(1).offset(0), from(contacts).select("id").limit(1).offset(1)),
-			"(SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1)"
+		it("should support two unions", () => {
+			check(
+				unionAll(from(contacts).select("id").limit(val(1, true)).offset(val(0, true)), from(contacts).select("id").limit(val(1, true)).offset(val(1, true))),
+				"(SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1)"
+			);
 		});
 
-		it("should support three union", () => {
-			unionAll(from(contacts).select("id").limit(1).offset(0), from(contacts).select("id").limit(1).offset(1), from(contacts).select("id").limit(1).offset(2)),
-			"(SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 2)"
+		it("should support three unions", () => {
+			check(
+				unionAll(from(contacts).select("id").limit(val(1, true)).offset(val(0, true)), from(contacts).select("id").limit(val(1, true)).offset(val(1, true)), from(contacts).select("id").limit(val(1, true)).offset(val(2, true))),
+				"((SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1)) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 2)"
+			);
 		});
-	})
+	});
 });
 
 describe("Where", () => {
@@ -406,10 +412,19 @@ describe("Values", () => {
 
 		check(
 			update(products).set({ price: c.price.cast(tInteger) }).from(c).where({ price: 1 }), 
-			"UPDATE products SET price = c.price::integer FROM (VALUES ($1, $2), ($3, $4)) AS c(name, price) WHERE c.price = $5",
+			`UPDATE products SET price = c.price::integer FROM (VALUES ($1, $2), ($3, $4)) AS c(name, price) WHERE c.price = $5`,
 			["123", 1, "345", 2, 1]
 		);
-	})
+	});
+
+	it("should escape new names for columns", () => {
+		const c = values({ Price: tInteger }).withValues([{ Price: 10 }]).as("c");
+		check(
+			from(c).select(c.Price),
+			`SELECT "Price" FROM (VALUES ($1)) AS c("Price")`,
+			[ 10 ]
+		);
+	});
 });
 
 describe("Update", () => {

@@ -15,6 +15,8 @@ export class Query<TReturningRow extends Row, TSingleColumn extends SingleColumn
 	protected returningColumns: RowToNmdExprs<TReturningRow> = {} as any;
 	protected selectedExpressions: (NamedExpression<any, any>|AllExpression<any>)[] = [];
 
+	protected then = () => { throw new Error("You probably don't want to await a query directy. Use a DbConnection to execute queries."); }
+
 	/**
 	 * Returns `NoColumnsSelected` if no columns are selected,
 	 * `MoreThanOneColumnSelected` if more than one columns are selected or 

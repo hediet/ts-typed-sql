@@ -1,3 +1,23 @@
+import debug = require("debug");
+
+export function isLoggingEnabled() {
+	return debug.enabled("typed-sql:debug");
+}
+
+const sqlDebugLogFull = debug("typed-sql:debug-full");
+export function logFull(message: string, ...args: any[]) {
+	sqlDebugLogFull(message, ...args);
+}
+
+const sqlDebugLog = debug("typed-sql:debug");
+export function log(message: string, ...args: any[]) {
+	sqlDebugLog(message, ...args);
+}
+
+const sqlDebugWarn = debug("typed-sql:warn");
+export function warn(message: string, ...args: any[]) {
+	sqlDebugWarn(message, ...args);
+}
 
 export function toObject<T, K>(item: T[], keySelector: (item: T) => K): any
 export function toObject<T, K, V>(item: T[], keySelector: (item: T) => K, valueSelector: (item: T) => V): any

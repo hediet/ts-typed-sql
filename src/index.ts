@@ -3,6 +3,7 @@ export * from "./AST/Ordering";
 export * from "./AST/Table";
 export * from "./AST/FromFactor";
 export * from "./AST/Types";
+export * from "./AST/SqlStatement";
 
 export * from "./AST/Queries/Query";
 export * from "./AST/Queries/RetrievalQuery";

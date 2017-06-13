@@ -4,6 +4,11 @@ import { objectValues } from "../../Helpers";
 import { AnyType } from "../Types";
 
 /**
+ * Used to report error messages through overloading.
+ */
+export interface ErrorMessage<TMsg> { msg: TMsg; }
+
+/**
  * An helper for mixins.
  * @private
  */

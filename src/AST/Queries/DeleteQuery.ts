@@ -2,7 +2,7 @@ import { FromItem, Row, FromFactor } from "../FromFactor";
 import { Table } from "../Table";
 import { ExpressionOrInputValue, AllExpression, NamedExpression, Expression, NamedExpressionNameOf } from "../Expressions";
 import { Query, NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
-import { NmdExpr, Simplify, NmdExprToRow, resolveColumnReference, handleSelect, Constructable } from "./Common";
+import { NmdExpr, Simplify, NmdExprToRow, resolveColumnReference, handleSelect, Constructable, ErrorMessage } from "./Common";
 import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
 import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
 import { combine } from "../../Helpers";
@@ -87,8 +87,10 @@ export class DeleteQuery<TLastFromRow extends Row, TReturningRow extends Row, TS
 	/** Selects columns that are currently in scope. */
 	public returning<TColumnNames extends keyof TLastFromRow>(...columns: TColumnNames[]): DeleteQuery<TLastFromRow, TReturningRow & {[TName in TColumnNames]: TLastFromRow[TName]}, MoreThanOneColumnSelected>;
 
-	public returning(...args: ((keyof TLastFromRow) | NmdExpr | AllExpression<any>)[]): any {
-		handleSelect(this.lastFromItem, args, this.returningColumns as any, this.selectedExpressions);
+	public returning(this: ErrorMessage<"Expressions must have names. Use expr.as('name').">, ...expr: Expression<any>[]): "Error";
+
+	public returning(...args: ((keyof TLastFromRow) | NmdExpr | AllExpression<any> | Expression<any>)[]): any {
+		handleSelect(this.lastFromItem, args as any, this.returningColumns as any, this.selectedExpressions);
 		return this;
 	}
 }

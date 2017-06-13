@@ -5,7 +5,7 @@ import {
 import { Table } from "../Table";
 import { Expression, ExpressionOrInputValue, AllExpression, toCondition, and, normalize, NamedExpression, NamedExpressionNameOf, Column } from "../Expressions";
 import { Query, SingleColumn, MoreThanOneColumnSelected, NoColumnsSelected } from './Query';
-import { NmdExpr, Simplify, NmdExprToRow, resolveColumnReference, handleSelect, Constructable } from "./Common";
+import { NmdExpr, Simplify, NmdExprToRow, resolveColumnReference, handleSelect, Constructable, ErrorMessage } from "./Common";
 import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
 import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
 import { BooleanType, AnyType } from "../Types";
@@ -117,8 +117,10 @@ export class UpdateQuery<TUpdatedColumns extends Row, TReturningColumns extends 
 	/** Selects columns that are currently in scope. */
 	public returning<TColumnNames extends keyof TFromTblCols>(...columns: TColumnNames[]): UpdateQuery<TUpdatedColumns, Simplify<TReturningColumns & {[TName in TColumnNames]: TFromTblCols[TName]}>, TFromTblCols, MoreThanOneColumnSelected>;
 
-	public returning(...args: ((keyof TFromTblCols) | NmdExpr | AllExpression<object>)[]): any {
-		handleSelect(this.lastFromItem, args, this.returningColumns as any, this.selectedExpressions);
+	public returning(this: ErrorMessage<"Expressions must have names. Use expr.as('name').">, ...expr: Expression<any>[]): "Error";
+
+	public returning(...args: ((keyof TFromTblCols) | NmdExpr | AllExpression<object> | Expression<any>)[]): any {
+		handleSelect(this.lastFromItem, args as any, this.returningColumns as any, this.selectedExpressions);
 		return this;
 	}
 }

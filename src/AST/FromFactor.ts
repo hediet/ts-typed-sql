@@ -4,7 +4,7 @@ import { Query } from "./Queries/Query";
 import { AnyType, BooleanType, GetInType, GetOutType, MapOutType, Record, Type } from './Types';
 
 export function fromItemTypes<TColumns extends HardRow>(fromItem: FromItem<TColumns>): TColumns
-export function fromItemTypes<TColumns extends HardRow, TColumnNames extends string>(fromItem: FromItem<TColumns>, columns: TColumnNames[]): { [TName in TColumnNames]: TColumns[TName] }
+export function fromItemTypes<TColumns extends HardRow, TColumnNames extends keyof TColumns>(fromItem: FromItem<TColumns>, columns: TColumnNames[]): { [TName in TColumnNames]: TColumns[TName] }
 export function fromItemTypes<TColumns extends HardRow>(fromItem: FromItem<TColumns>, columns: (keyof TColumns)[] = []): TColumns {
 	return toObject(objectValues(fromItem.$columns).filter(c => columns.indexOf(c.name) !== -1), k => k.name, k => k.type);
 }
@@ -75,6 +75,9 @@ export class FromFactorCrossJoin extends FromFactorAbstractJoin { public getType
 
 export type FromItemToOutRow<TFromItem extends FromItem<any>> =
 	{[TName in keyof TFromItem["$columns"]]: GetOutType<ExpressionTypeOf<TFromItem["$columns"][TName]>> };
+
+export type FromItemToInRow<TFromItem extends FromItem<any>> =
+	{[TName in keyof TFromItem["$columns"]]: GetInType<ExpressionTypeOf<TFromItem["$columns"][TName]>> };
 
 export abstract class FromItem<TColumns extends HardRow> extends FromFactor {
 	public readonly $columns: RowToColumns<TColumns>;

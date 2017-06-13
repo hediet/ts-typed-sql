@@ -1,9 +1,9 @@
-import { MapExpressionOrInputValue, AllExpression, NamedExpression, NamedExpressionNameOf } from '../Expressions';
+import { MapExpressionOrInputValue, AllExpression, NamedExpression, NamedExpressionNameOf, Expression } from '../Expressions';
 import { RetrievalQuery } from './RetrievalQuery';
 import { Table, TableRequiredColumns, TableOptionalColumns } from "../Table";
 import { Row, FromItem } from "../FromFactor";
 import { Query, MoreThanOneColumnSelected, NoColumnsSelected, SingleColumn } from "./Query";
-import { Simplify, NmdExprToRow, NmdExpr, handleSelect } from "./Common";
+import { Simplify, NmdExprToRow, NmdExpr, handleSelect, ErrorMessage } from "./Common";
 import { combine } from "../../Helpers";
 
 /**
@@ -104,8 +104,10 @@ export class InsertQuery<TTableColumns extends Row, TReturningColumns extends Ro
 	/** Selects columns that are currently in scope. */
 	public returning<TColumnNames extends keyof TTableColumns>(...columns: TColumnNames[]): InsertQuery<TTableColumns, Simplify<TReturningColumns & {[TName in TColumnNames]: TTableColumns[TName]}>, MoreThanOneColumnSelected>;
 
-	public returning(...args: ((keyof TTableColumns) | NmdExpr | AllExpression<any>)[]): any {
-		handleSelect(this.table, args, this.returningColumns as any, this.selectedExpressions);
+	public returning(this: ErrorMessage<"Expressions must have names. Use expr.as('name').">, ...expr: Expression<any>[]): "Error";
+
+	public returning(...args: ((keyof TTableColumns) | NmdExpr | AllExpression<any> | Expression<any>)[]): any {
+		handleSelect(this.table, args as any, this.returningColumns as any, this.selectedExpressions);
 		return this;
 	}
 }

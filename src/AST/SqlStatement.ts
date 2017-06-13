@@ -12,8 +12,32 @@ export type SqlStatement = DeleteQuery<any, any, any>
 	| StartTransactionStatement
 	| CommitTransactionStatement;
 
+export enum IsolationLevel {
+	Serializable,
+	RepeatableRead,
+	ReadCommitted,
+	ReadUncommitted 
+}
+
+function isolationLevelToString (isolationLevel: IsolationLevel) {
+	switch (isolationLevel) {
+		case IsolationLevel.Serializable: return "SERIALIZABLE";
+		case IsolationLevel.RepeatableRead: return "REPEATABLE READ";
+		case IsolationLevel.ReadCommitted: return "READ COMMITTED";
+		case IsolationLevel.ReadUncommitted: return "READ UNCOMMITTED";
+		default: throw new Error(`Invalid isolation level '${isolationLevel}'.`);
+	}
+}
+
 export class StartTransactionStatement {
-	public toString() { return "START TRANSACTION"; }
+	constructor(public readonly isolationLevel?: IsolationLevel) {
+	}
+
+	public toString() {
+		const isoLevel = this.isolationLevel ? (" ISOLATION LEVEL " + isolationLevelToString(this.isolationLevel)) : "";
+
+		return `START TRANSACTION${isoLevel}`;
+	}
 }
 
 export class CommitTransactionStatement {

@@ -10,12 +10,10 @@ import {
 import { RetrievalQuery } from "./RetrievalQuery";
 import { NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
 import { Ordering, isOrderingAsc, isOrderingDesc } from "../Ordering";
-import { Simplify, NmdExpr, NmdExprToRow, handleSelect, resolveColumnReference, Constructable } from "./Common";
+import { Simplify, NmdExpr, NmdExprToRow, handleSelect, resolveColumnReference, Constructable, ErrorMessage } from "./Common";
 import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
 import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
 import { secondWithTypeOfFirst } from "../../Helpers";
-
-export interface ErrorMessage<TMsg> { msg: TMsg; }
 
 export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TSingleColumn extends SingleColumn<TSelectedCols>>
 	extends JoinMixin(
@@ -88,10 +86,10 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 	/** Selects columns that are currently in scope. */
 	public select<TColumnNames extends keyof TFromTblCols>(...columns: TColumnNames[]): SelectQuery<Simplify<TSelectedCols & {[TName in TColumnNames]: TFromTblCols[TName]}>, TFromTblCols, MoreThanOneColumnSelected>;
 	
-	public select(this: ErrorMessage<"Expressions must have names. Use expr.as('name').">, ...expr: Expression<AnyType>[]);
+	public select(this: ErrorMessage<"Expressions must have names. Use expr.as('name').">, ...expr: Expression<any>[]): "Error";
 
-	public select(...args: ((keyof TFromTblCols) | NmdExpr | AllExpression<any>)[]): any {
-		handleSelect(this.lastFromItem, args, this.returningColumns as any, this.selectedExpressions);
+	public select(...args: ((keyof TFromTblCols) | NmdExpr | AllExpression<any> | Expression<any>)[]): any {
+		handleSelect(this.lastFromItem, args as any, this.returningColumns as any, this.selectedExpressions);
 		return this;
 	}
 

@@ -1,7 +1,7 @@
 import { Row, FromItem, RowToColumns, ColumnsToRow } from "./FromFactor";
-import { TableColumn } from "./Expressions";
+import { TableColumn, ExpressionTypeOf } from "./Expressions";
 import { toObject, combine, objectEntries } from "../Helpers";
-import { AnyType } from "./Types";
+import { AnyType, GetInType } from "./Types";
 
 export interface TableName {
 	schema?: string,
@@ -32,6 +32,10 @@ export class Table<TRequiredColumns extends Row, TOptionalColumns extends Row>
 
 export type TableRequiredColumns<TTable extends Table<any, any>> = ColumnsToRow<TTable["$requiredColumns"]>;
 export type TableOptionalColumns<TTable extends Table<any, any>> = ColumnsToRow<TTable["$optionalColumns"]>;
+
+export type TableToInRow<TFromItem extends Table<any, any>> =
+	{[TName in keyof TableRequiredColumns<TFromItem>]: GetInType<ExpressionTypeOf<TFromItem["$requiredColumns"][TName]>> } &
+	{[TName in keyof TableOptionalColumns<TFromItem>]?: GetInType<ExpressionTypeOf<TFromItem["$optionalColumns"][TName]>> };
 
 export type TableCtor<TRequiredColumns extends Row, TOptionalColumns extends Row> 
 	= Table<TRequiredColumns, TOptionalColumns> & RowToColumns<TRequiredColumns & TOptionalColumns>;

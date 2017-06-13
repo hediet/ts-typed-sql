@@ -71,6 +71,7 @@ export abstract class Expression<T extends AnyType> {
 	public isInQuery<TRow extends { [name: string]: AnyType }, TSingleColumn extends keyof TRow>(this: Expression<TRow[TSingleColumn]>,
 		values: RetrievalQuery<TRow, TSingleColumn>): Expression<BooleanType> { return new IsInQueryExpression(this, values); }
 	
+	public abs(this: Expression<IntegerType>): Expression<IntegerType> { return new KnownFunctionInvocation("abs", [this], tInteger); }
 	public minus(this: Expression<IntegerType>, other: ExpressionOrInputValue<IntegerType>): Expression<IntegerType> {
 		return new SubtractionExpression(this, normalize(tInteger, other)); }
 	public plus(this: Expression<IntegerType>, other: ExpressionOrInputValue<IntegerType>): Expression<IntegerType> {
@@ -83,8 +84,13 @@ export abstract class Expression<T extends AnyType> {
 	public toUpper(this: Expression<TextType>): Expression<TextType> { return new KnownFunctionInvocation("upper", [this], tText); }
 	public toLower(this: Expression<TextType>): Expression<TextType> { return new KnownFunctionInvocation("lower", [this], tText); }
 
+
+	/* Grouping functions */
 	public sum(this: Expression<IntegerType>): Expression<IntegerType> { return new KnownFunctionInvocation("sum", [this], tInteger); }
 	public count(this: Expression<any>): Expression<IntegerType> { return new KnownFunctionInvocation("count", [this], tInteger); }
+	public min(this: Expression<IntegerType>): Expression<IntegerType> { return new KnownFunctionInvocation("min", [this], tInteger); }
+	public max(this: Expression<IntegerType>): Expression<IntegerType> { return new KnownFunctionInvocation("max", [this], tInteger); }
+	public distinct(): Expression<T> { return new KnownFunctionInvocation("distinct", [this], this.type); }
 
 	public isLike(this: Expression<TextType>, other: ExpressionOrInputValue<TextType>): Expression<BooleanType> { return new LikeExpression(this, normalize(this.type, other)); }
 
@@ -135,6 +141,10 @@ export function and(...expressions: (Expression<BooleanType> | undefined)[]): Ex
 	return expressions
 		.filter(expr => !!expr)
 		.reduce((prev, cur) => prev ? prev.and(cur!) : cur, undefined);
+}
+
+export function nullif<T extends AnyType>(expression1: Expression<T>, expression2: ExpressionOrInputValue<T>): Expression<T> {
+	return new KnownFunctionInvocation("nullif", [expression1, normalize(expression1.type, expression2) ], expression1.type);
 }
 
 export function concat(...expressions: ExpressionOrInputValue<TextType>[]): Expression<TextType> {

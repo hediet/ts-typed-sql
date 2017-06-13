@@ -1,7 +1,9 @@
+import debug = require('debug');
+
 import { IntegerType, RecordTypeToJson } from '../src/AST/Types';
-import { select, from, table, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, 
-	PostgreQueryService, concat, not, deleteFrom, FromItem, Row, values, Json, tText, tInteger, tJson, tIntegerEnum } from "../src/index";
-import pg = require("pg");
+import { select, from, table, DbConnection, insertInto, update, val, defaultValue, SqlGenerator, TableToInRow,
+	PostgreQueryService, concat, not, deleteFrom, FromItem, Row, values, Json, tText, tInteger, tJson, tIntegerEnum, FromItemToInRow, IsolationLevel } from "../src/index";
+import pg = require('pg');
 
 enum Gender {
 	Male, Female
@@ -33,10 +35,11 @@ const pool = new pg.Pool({
 	try {
 		const queryService = new PostgreQueryService(pool, { shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });
 
-		queryService.onSqlStatement.sub((queryService, args) => {
-			console.log(args.sql, args.parameters);
-		});
+		//queryService.onSqlStatement.sub((queryService, args) => {
+		//	console.log(args.sql, args.parameters);
+		//});
 		const dbCon = new DbConnection(queryService);
+
 
 		await dbCon.exec(deleteFrom(contacts).where(val(true)));
 		await dbCon.exec(insertInto(contacts).value(
@@ -72,7 +75,7 @@ const pool = new pg.Pool({
 				.select(concat(contacts.firstname, val(" ", true), contacts.lastname).as("fullname"))
 		);
 
-		await dbCon.exec(select(contacts.firstname.toLower(), contacts.data));
+		//await dbCon.exec(select(contacts.firstname.toLower(), contacts.data));
 
 		await dbCon.exec(
 			deleteFrom(contacts).where(contacts.id.isEqualTo(

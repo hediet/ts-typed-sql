@@ -20,16 +20,16 @@ Intellisense works great when using this library from TypeScript in VS Code.
 
 For proper typing, all used tables must be defined:
 ```ts
-import { table, column } from "@hediet/typed-sql";
+import { table, column, tText, tInteger } from "@hediet/typed-sql";
 
 const contacts = table({ name: "contacts", schema: "public" },
 	{
-		firstname: column<string>(),
-		lastname: column<string>(),
-		mother_id: column<number | null>(),
-		father_id: column<number | null>()
+		firstname: tText,
+		lastname: tText,
+		mother_id: tInteger.orNull(),
+		father_id: tInteger.orNull(),
 	},
-	{ id: column<number>() }
+	{ id: tInteger }
 );
 
 ...

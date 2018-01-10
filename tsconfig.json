@@ -9,6 +9,7 @@
     "strictNullChecks": true,
     "noImplicitReturns": true,
     "sourceMap": true,
+    "sourceRoot": ".",
     "experimentalDecorators": true,
     "noImplicitUseStrict": true,
     "outDir": "dist",

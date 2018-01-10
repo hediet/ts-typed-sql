@@ -26,14 +26,32 @@ const contactAddresses = table("contact_addresses",
 	}
 );
 
-function check<T2>(query: Query<T2, any>, expectedSql: string, args: any[] = []): MapOutType<T2> {
-	const generator = new PostgreSqlGenerator({ shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });
+function check<T2>(query: Query<T2, any>, expectedSql: string, args: any[] = [], skipQuoting = true): MapOutType<T2> {
+	const generator = new PostgreSqlGenerator({ shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: skipQuoting });
 	const sql = generator.toSql(query);
 
 	assert.equal(sql.sql, expectedSql);
 	assert.deepEqual(sql.parameters, args);
 	return {} as any;
 }
+
+describe("Quoting", () => {
+	it("should do quoting right", () => {
+		check<{}>(
+			from(contacts.as("all")),
+			`SELECT FROM contacts AS "all"`
+		);
+
+		check<{}>(
+			from(contacts.as("all2")),
+			`SELECT FROM contacts AS all2`
+		);
+		check<{}>(
+			from(contacts.as("all 2")),
+			`SELECT FROM contacts AS "all 2"`
+		);
+	})
+});
 
 describe("Select", () => {
 	it("should support basic select statements", () => {
@@ -65,7 +83,7 @@ describe("Select", () => {
 		check(
 			select(contacts.firstname.as("fn"), contacts.lastname.as("ln")).from(contacts),
 			`SELECT firstname AS fn, lastname AS ln FROM contacts`
-		);		
+		);
 	});
 
 	it("should support complex selections", () => {

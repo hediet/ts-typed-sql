@@ -1,4 +1,4 @@
-import { BooleanType, AnyType } from '../Types';
+import { BooleanType, AnyType, IntegerType, Type } from '../Types';
 import {
 	Expression, NamedExpression, ExpressionOrInputValue, MapExpressionOrInputValue,
 	ExpressionTypeOf, AllExpression, and, toCondition, Column, NamedExpressionNameOf
@@ -11,19 +11,12 @@ import { RetrievalQuery } from "./RetrievalQuery";
 import { NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
 import { Ordering, isOrderingAsc, isOrderingDesc } from "../Ordering";
 import { Simplify, NmdExpr, NmdExprToRow, handleSelect, resolveColumnReference, Constructable, ErrorMessage } from "./Common";
-import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
-import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
+import { JoinConditionBuilder, doJoin } from "./JoinMixin";
 import { secondWithTypeOfFirst } from "../../Helpers";
 
 export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TSingleColumn extends SingleColumn<TSelectedCols>>
-	extends JoinMixin(
-		WhereMixin<Constructable<RetrievalQuery<TSelectedCols, TSingleColumn>>, TFromTblCols>(
-			RetrievalQuery))
+	extends RetrievalQuery<TSelectedCols, TSingleColumn>
 {
-	protected _from: FromFactor | undefined = undefined;
-	protected _whereCondition: Expression<BooleanType> | undefined;
-	protected lastFromItem: FromItem<TFromTblCols> | undefined;
-
 	private _orderBys: Ordering<Expression<AnyType>>[] = [];
 	private _havingCondition: Expression<BooleanType> | undefined;
 	private _groupBys: Expression<AnyType>[] = [];
@@ -43,9 +36,9 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 	 * @param table The table to select from.
 	 */
 	public from<TTableColumns extends HardRow>(table: FromItem<TTableColumns>):
-		SelectQuery<TSelectedCols, TTableColumns, TSingleColumn> {
+			SelectQuery<TSelectedCols, TTableColumns, TSingleColumn> {
 		this._from = FromFactor.crossJoin(this._from, table);
-		this.lastFromItem = table as any;
+		this.lastFromItem = table as FromItem<any>;
 		return this as any;
 	}
 
@@ -182,6 +175,81 @@ export class SelectQuery<TSelectedCols extends Row, TFromTblCols extends Row, TS
 		this._groupBys.push(...exprs);
 		return this;
 	}
+
+	// #region call-macro whereMixin("TFromTblCols")
+	protected _whereCondition: Expression<BooleanType> | undefined;
+	protected lastFromItem: FromItem<TFromTblCols> | undefined;
+
+	/**
+	* Adds where conditions.
+	* @param obj The object that defines equals expressions.
+	*/
+	public where(obj: Partial<MapExpressionOrInputValue<TFromTblCols>>): this;
+	/**
+	* Adds where conditions.
+	* @param conditions The condition expressions.
+	*/
+	public where(...conditions: Expression<BooleanType>[]): this;
+	public where(...args: any[]): this {
+		const expression = toCondition(this.lastFromItem, args);
+		this._whereCondition = and(this._whereCondition, expression);
+		return this;
+	}
+
+	/**
+	* Adds negated where conditions.
+	*/
+	public whereNot(condition: Expression<BooleanType>, ...conditions: Expression<BooleanType>[]): this {
+		this._whereCondition = and(this._whereCondition, condition.not(), ...conditions.map(c => c.not()));
+		return this;
+	}
+	// #endregion
+
+	// #region call-macro joinMixin()
+	protected _from: FromFactor | undefined = undefined;
+
+	/**
+	* Performs a full join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* for (row r in cur): if (joined has no row that matches r)
+	* 	yield row(r, null)
+	* for (row j in joined): if (cur has no row that matches j)
+	* 	yield row(null, j)
+	* ```
+	*/
+	public fullJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorFullJoin, fromItem);
+	}
+
+	/**
+	* Performs a left join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* for (row r in cur): if (joined has no row that matches r)
+	* 	yield row(r, null)
+	* ```
+	*/
+	public leftJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorLeftJoin, fromItem);
+	}
+
+	/**
+	* Performs an inner join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* ```
+	*/
+	public innerJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorInnerJoin, fromItem);
+	}
+	// #endregion
 }
 
 /**

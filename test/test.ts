@@ -1,7 +1,7 @@
 import { objectValues, toObject } from '../src/Helpers';
 import {
 	fromItemTypes,
-	unionAll, GetOutType, select, from, table, DbConnection, insertInto, FromItemToOutRow, MapOutType, RowToColumns,
+	union, unionAll, GetOutType, select, from, table, DbConnection, insertInto, FromItemToOutRow, MapOutType, RowToColumns,
 	update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, Query, PostgreSqlGenerator, values, Expression, tInteger, tText, tJson, ExpressionTypeOf, FromItem, HardRow, tBoolean
 } from "../src/index";
 import * as assert from "assert";
@@ -250,6 +250,10 @@ describe("Select", () => {
 	describe("Union", () => {
 		it("should support a single union", () => {
 			check(
+				union(from(contacts).select("id")),
+				"SELECT id FROM contacts"
+			);
+			check(
 				unionAll(from(contacts).select("id")),
 				"SELECT id FROM contacts"
 			);
@@ -257,14 +261,18 @@ describe("Select", () => {
 
 		it("should support two unions", () => {
 			check(
-				unionAll(from(contacts).select("id").limit(val(1, true)).offset(val(0, true)), from(contacts).select("id").limit(val(1, true)).offset(val(1, true))),
+				union(from(contacts).select("id").limit(val(1, true)).offset(val(0, true)), from(contacts).select("id").limit(val(1, true)).offset(val(1, true))),
 				"(SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1)"
+			);
+			check(
+				unionAll(from(contacts).select("id").limit(val(1, true)).offset(val(0, true)), from(contacts).select("id").limit(val(1, true)).offset(val(1, true))),
+				"(SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION ALL (SELECT id FROM contacts LIMIT 1 OFFSET 1)"
 			);
 		});
 
 		it("should support three unions", () => {
 			check(
-				unionAll(from(contacts).select("id").limit(val(1, true)).offset(val(0, true)), from(contacts).select("id").limit(val(1, true)).offset(val(1, true)), from(contacts).select("id").limit(val(1, true)).offset(val(2, true))),
+				union(from(contacts).select("id").limit(val(1, true)).offset(val(0, true)), from(contacts).select("id").limit(val(1, true)).offset(val(1, true)), from(contacts).select("id").limit(val(1, true)).offset(val(2, true))),
 				"((SELECT id FROM contacts LIMIT 1 OFFSET 0) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 1)) UNION (SELECT id FROM contacts LIMIT 1 OFFSET 2)"
 			);
 		});

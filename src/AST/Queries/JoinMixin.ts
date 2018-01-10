@@ -3,68 +3,62 @@ import { Expression, ExpressionOrInputValue, ExpressionTypeOf, toCondition, MapE
 import { FromItem, FromFactor, FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin, HardRow } from "../FromFactor";
 import { Constructable } from "./Common";
 
-export interface JoinMixinInstance {
-	/**
-	 * Performs a full join on the current query (`cur`) and a specified table (`joined`).
-	 * These rows are returned:
-	 * ```
-	 * for (row r in cur): for (row j in joined that matches r)
-	 * 	yield row(r, j)
-	 * for (row r in cur): if (joined has no row that matches r)
-	 * 	yield row(r, null)
-	 * for (row j in joined): if (cur has no row that matches j)
-	 * 	yield row(null, j)
-	 * ```
-	 */
-	fullJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+class JoinMixin {
+	// #region define-macro joinMixin()
+	protected _from: FromFactor | undefined = undefined;
 
 	/**
-	 * Performs a left join on the current query (`cur`) and a specified table (`joined`).
-	 * These rows are returned:
-	 * ```
-	 * for (row r in cur): for (row j in joined that matches r)
-	 * 	yield row(r, j)
-	 * for (row r in cur): if (joined has no row that matches r)
-	 * 	yield row(r, null)
-	 * ```
-	 */
-	leftJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+	* Performs a full join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* for (row r in cur): if (joined has no row that matches r)
+	* 	yield row(r, null)
+	* for (row j in joined): if (cur has no row that matches j)
+	* 	yield row(null, j)
+	* ```
+	*/
+	public fullJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorFullJoin, fromItem);
+	}
 
 	/**
-	 * Performs an inner join on the current query (`cur`) and a specified table (`joined`).
-	 * These rows are returned:
-	 * ```
-	 * for (row r in cur): for (row j in joined that matches r)
-	 * 	yield row(r, j)
-	 * ```
-	 */
-	innerJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this>;
+	* Performs a left join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* for (row r in cur): if (joined has no row that matches r)
+	* 	yield row(r, null)
+	* ```
+	*/
+	public leftJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorLeftJoin, fromItem);
+	}
+
+	/**
+	* Performs an inner join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* ```
+	*/
+	public innerJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorInnerJoin, fromItem);
+	}
+	// #endregion
 }
 
-export function JoinMixin<BC extends Constructable<object>>(Base: BC): Constructable<JoinMixinInstance> & BC {
-	return class extends Base {
-		protected _from: FromFactor | undefined = undefined;
+export type FromFactorCtor = new (from: FromFactor, joined: FromFactor, condition: Expression<BooleanType>) => FromFactor;
 
-		private curriedOnJoin(ctor: new (fromFactor: FromFactor, joined: FromFactor, condition: Expression<BooleanType>) => FromFactor) {
-			return (joined: FromItem<any>, condition: Expression<BooleanType>): this => {
-				if (!this._from) throw new Error("A primary table must be selected before other tables can be joined.");
-				this._from = new ctor(this._from, joined, condition);
-				return this;
-			}
-		}
-
-		public fullJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
-			return new JoinConditionBuilder(fromItem, this.curriedOnJoin(FromFactorFullJoin));
-		}
-
-		public leftJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
-			return new JoinConditionBuilder(fromItem, this.curriedOnJoin(FromFactorLeftJoin));
-		}
-
-		public innerJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
-			return new JoinConditionBuilder(fromItem, this.curriedOnJoin(FromFactorInnerJoin));
-		}
-	};
+export function doJoin<TFromItemColumns, TSelf>(self: TSelf, currentFrom: FromFactor | undefined, fromUpdater: (newFrom: FromFactor) => void, ctor: FromFactorCtor, fromItem: FromItem<any>) {
+	return new JoinConditionBuilder(fromItem, (joined: FromItem<any>, condition: Expression<BooleanType>): TSelf => {
+		if (!currentFrom) throw new Error("A primary table must be selected before other tables can be joined.");
+		fromUpdater(new ctor(currentFrom, joined, condition));
+		return self;
+	});
 }
 
 export class JoinConditionBuilder<TFromItemColumns, TReturn> {

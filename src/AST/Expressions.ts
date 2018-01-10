@@ -143,6 +143,14 @@ export function and(...expressions: (Expression<BooleanType> | undefined)[]): Ex
 		.reduce((prev, cur) => prev ? prev.and(cur!) : cur, undefined);
 }
 
+export function or(expression1: Expression<BooleanType>, ...expressions: Expression<BooleanType>[]): Expression<BooleanType>;
+export function or(...expressions: (Expression<BooleanType> | undefined)[]): Expression<BooleanType>|undefined;
+export function or(...expressions: (Expression<BooleanType> | undefined)[]): Expression<BooleanType>|undefined {
+	return expressions
+		.filter(expr => !!expr)
+		.reduce((prev, cur) => prev ? prev.or(cur!) : cur, undefined);
+}
+
 export function nullif<T extends AnyType>(expression1: Expression<T>, expression2: ExpressionOrInputValue<T>): Expression<T> {
 	return new KnownFunctionInvocation("nullif", [expression1, normalize(expression1.type, expression2) ], expression1.type);
 }
@@ -291,33 +299,33 @@ export interface ConcreteBinaryExpressionStatic<TLeft extends AnyType, TRight ex
 	new (...args: any[]): ConcreteBinaryExpression<TLeft, TRight, TResult>;
 }
 
-export function ConcreteBinaryExpression<TLeft extends AnyType, TRight extends AnyType, TResult extends AnyType>(
-		symbol: string, resultType: TResult, precedenceLevel: number): ConcreteBinaryExpressionStatic<TLeft, TRight, TResult> {
-	return class extends BinaryOperatorExpression<TLeft, TRight, TResult> {
-		constructor(left: Expression<TLeft>, right: Expression<TRight>) { super(left, right, resultType); }
-		public get operator(): string { return symbol; }
-		public get precedenceLevel(): number { return precedenceLevel; }
+export function ConcreteBinaryExpression<TResult extends AnyType>(
+		symbol: string, resultType: TResult, precedenceLevel: number) {
+	return class ConcreteBinaryExpression<TLeft extends AnyType, TRight extends AnyType> extends BinaryOperatorExpression<TLeft, TRight, TResult> {
+			constructor(left: Expression<TLeft>, right: Expression<TRight>) { super(left, right, resultType); }
+			public get operator(): string { return symbol; }
+			public get precedenceLevel(): number { return precedenceLevel; }
 	};
 }
 
-export class AdditionExpression extends ConcreteBinaryExpression<IntegerType, IntegerType, IntegerType>("+", tInteger, 3) {}
-export class SubtractionExpression extends ConcreteBinaryExpression<IntegerType, IntegerType, IntegerType>("-", tInteger, 3) {}
-export class MultiplicationExpression extends ConcreteBinaryExpression<IntegerType, IntegerType, IntegerType>("*", tInteger, 2) {}
-export class DivisionExpression extends ConcreteBinaryExpression<IntegerType, IntegerType, IntegerType>("/", tInteger, 2) {}
-export class ModulusExpression extends ConcreteBinaryExpression<IntegerType, IntegerType, IntegerType>("%", tInteger, 2) {}
 
+export class AdditionExpression extends ConcreteBinaryExpression<IntegerType>("+", tInteger, 3)<IntegerType, IntegerType> {}
+export class SubtractionExpression extends ConcreteBinaryExpression<IntegerType>("-", tInteger, 3)<IntegerType, IntegerType> {}
+export class MultiplicationExpression extends ConcreteBinaryExpression<IntegerType>("*", tInteger, 2)<IntegerType, IntegerType> {}
+export class DivisionExpression extends ConcreteBinaryExpression<IntegerType>("/", tInteger, 2)<IntegerType, IntegerType> {}
+export class ModulusExpression extends ConcreteBinaryExpression<IntegerType>("%", tInteger, 2)<IntegerType, IntegerType> {}
 
-export class EqualsExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>("=", tBoolean, 4) {}
-export class UnequalsExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>("!=", tBoolean, 4) {}
-export class GreaterExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>(">", tBoolean, 4) {}
-export class LessExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>("<", tBoolean, 4) {}
-export class GreaterOrEqualExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>(">=", tBoolean, 4) {}
-export class LessOrEqualExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>("<=", tBoolean, 4) {}
-export class NotLessExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>("!<", tBoolean, 4) {}
-export class NotGreaterExpression<T extends AnyType> extends ConcreteBinaryExpression<T, T, BooleanType>("!>", tBoolean, 4) {}
+export class EqualsExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>("=", tBoolean, 4)<T, T> {}
+export class UnequalsExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>("!=", tBoolean, 4)<T, T> {}
+export class GreaterExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>(">", tBoolean, 4)<T, T> {}
+export class LessExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>("<", tBoolean, 4)<T, T> {}
+export class GreaterOrEqualExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>(">=", tBoolean, 4)<T, T> {}
+export class LessOrEqualExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>("<=", tBoolean, 4)<T, T> {}
+export class NotLessExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>("!<", tBoolean, 4)<T, T> {}
+export class NotGreaterExpression<T extends AnyType> extends ConcreteBinaryExpression<BooleanType>("!>", tBoolean, 4)<T, T> {}
 
-export class OrExpression extends ConcreteBinaryExpression<BooleanType, BooleanType, BooleanType>("OR", tBoolean, 7) {}
-export class AndExpression extends ConcreteBinaryExpression<BooleanType, BooleanType, BooleanType>("AND", tBoolean, 6) {}
+export class OrExpression extends ConcreteBinaryExpression< BooleanType>("OR", tBoolean, 7)<BooleanType, BooleanType> {}
+export class AndExpression extends ConcreteBinaryExpression< BooleanType>("AND", tBoolean, 6)<BooleanType, BooleanType> {}
 
 export class LikeExpression extends Expression<BooleanType> {
 	public get precedenceLevel() { return 7; }

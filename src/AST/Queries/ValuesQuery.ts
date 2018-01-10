@@ -30,6 +30,6 @@ export class ValuesQuery<TAsColumns extends { [columnName: string]: AnyType }> e
 		const first = this.values[0];
 		const columns = toObject(objectEntries(this.columns), ([name]) => name, ([name, type]) => type);
 
-		return super.as(name, columns);
+		return super.as(name, columns) as any;
 	}
 }

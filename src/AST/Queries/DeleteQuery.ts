@@ -1,10 +1,9 @@
-import { FromItem, Row, FromFactor } from "../FromFactor";
+import { FromItem, Row, FromFactor, HardRow, FromFactorFullJoin, FromFactorInnerJoin, FromFactorLeftJoin } from "../FromFactor";
 import { Table } from "../Table";
-import { ExpressionOrInputValue, AllExpression, NamedExpression, Expression, NamedExpressionNameOf } from "../Expressions";
+import { ExpressionOrInputValue, AllExpression, NamedExpression, Expression, NamedExpressionNameOf, MapExpressionOrInputValue, and, toCondition } from "../Expressions";
 import { Query, NoColumnsSelected, MoreThanOneColumnSelected, SingleColumn } from "./Query";
 import { NmdExpr, Simplify, NmdExprToRow, resolveColumnReference, handleSelect, Constructable, ErrorMessage } from "./Common";
-import { JoinMixin, JoinMixinInstance } from "./JoinMixin";
-import { WhereMixin, WhereMixinInstance } from "./WhereMixin";
+import { doJoin, JoinConditionBuilder } from "./JoinMixin";
 import { combine } from "../../Helpers";
 import { BooleanType } from "../Types";
 
@@ -21,11 +20,7 @@ export function deleteFrom<T extends Row>(table: FromItem<T> & Table<any, any>):
  * Represents a DELETE FROM query.
  */
 export class DeleteQuery<TLastFromRow extends Row, TReturningRow extends Row, TSingleColumn extends SingleColumn<TReturningRow>>
-	extends JoinMixin(WhereMixin<Constructable<Query<TReturningRow, TSingleColumn>>, TLastFromRow>(Query)) {
-
-	protected _from: FromFactor | undefined = undefined;
-	protected _whereCondition: Expression<BooleanType> | undefined;
-	protected lastFromItem: FromItem<TLastFromRow> | undefined;
+	extends Query<TReturningRow, TSingleColumn> {
 
 	constructor(private readonly table: FromItem<any> & Table<any, any>) {
 		super();
@@ -93,4 +88,79 @@ export class DeleteQuery<TLastFromRow extends Row, TReturningRow extends Row, TS
 		handleSelect(this.lastFromItem, args as any, this.returningColumns as any, this.selectedExpressions);
 		return this;
 	}
+
+	// #region call-macro whereMixin("TLastFromRow")
+	protected _whereCondition: Expression<BooleanType> | undefined;
+	protected lastFromItem: FromItem<TLastFromRow> | undefined;
+
+	/**
+	* Adds where conditions.
+	* @param obj The object that defines equals expressions.
+	*/
+	public where(obj: Partial<MapExpressionOrInputValue<TLastFromRow>>): this;
+	/**
+	* Adds where conditions.
+	* @param conditions The condition expressions.
+	*/
+	public where(...conditions: Expression<BooleanType>[]): this;
+	public where(...args: any[]): this {
+		const expression = toCondition(this.lastFromItem, args);
+		this._whereCondition = and(this._whereCondition, expression);
+		return this;
+	}
+
+	/**
+	* Adds negated where conditions.
+	*/
+	public whereNot(condition: Expression<BooleanType>, ...conditions: Expression<BooleanType>[]): this {
+		this._whereCondition = and(this._whereCondition, condition.not(), ...conditions.map(c => c.not()));
+		return this;
+	}
+	// #endregion
+
+	// #region call-macro joinMixin()
+	protected _from: FromFactor | undefined = undefined;
+
+	/**
+	* Performs a full join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* for (row r in cur): if (joined has no row that matches r)
+	* 	yield row(r, null)
+	* for (row j in joined): if (cur has no row that matches j)
+	* 	yield row(null, j)
+	* ```
+	*/
+	public fullJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorFullJoin, fromItem);
+	}
+
+	/**
+	* Performs a left join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* for (row r in cur): if (joined has no row that matches r)
+	* 	yield row(r, null)
+	* ```
+	*/
+	public leftJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorLeftJoin, fromItem);
+	}
+
+	/**
+	* Performs an inner join on the current query (`cur`) and a specified table (`joined`).
+	* These rows are returned:
+	* ```
+	* for (row r in cur): for (row j in joined that matches r)
+	* 	yield row(r, j)
+	* ```
+	*/
+	public innerJoin<TFromItemColumns extends HardRow>(fromItem: FromItem<TFromItemColumns>): JoinConditionBuilder<TFromItemColumns, this> {
+		return doJoin(this, this._from, newFrom => this._from = newFrom, FromFactorInnerJoin, fromItem);
+	}
+	// #endregion
 }

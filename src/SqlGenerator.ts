@@ -96,7 +96,7 @@ export abstract class SqlGenerator {
 		const query1Sql = this.transformToSql(query.query1, context);
 		const query2Sql = this.transformToSql(query.query2, context);
 
-		return `(${query1Sql}) UNION (${query2Sql})`;
+		return `(${query1Sql}) UNION ${query.isUnionAll ? "ALL " : ""}(${query2Sql})`;
 	}
 
 	protected transformValuesQueryToSql(query: ValuesQuery<any>, context: Context): string {
@@ -145,7 +145,7 @@ export abstract class SqlGenerator {
 			const s = data.values.getState();
 			const columnNames = s.selected.map(selectedCol => {
 				if (selectedCol instanceof Exprs.AllExpression)
-					throw new Error("AllExpressions in insert into query are not supported.");
+					throw new Error("AllExpressions in an insert into query are not supported.");
 				if (!(selectedCol.name in data.table.$columns))
 					throw new Error(`Column '${selectedCol.name}' does not exist on table '${data.table}'.`);
 				return selectedCol.name;
@@ -322,9 +322,7 @@ export abstract class SqlGenerator {
 					if (f instanceof FromFactorAbstractConditionalJoin) {
 						const condition = this.expressionToSql(f.joinCondition, context);
 						let join: string;
-						if (f instanceof FromFactorCrossJoin)
-							join = "CROSS JOIN";
-						else if (f instanceof FromFactorFullJoin)
+						if (f instanceof FromFactorFullJoin)
 							join = "FULL JOIN";
 						else if (f instanceof FromFactorInnerJoin)
 							join = "JOIN";

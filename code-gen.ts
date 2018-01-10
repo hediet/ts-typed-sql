@@ -1,5 +1,5 @@
 generateSelect("returning", "TReturningColumns", "TSingleColumn", "TTableColumns",	args => `InsertQuery<TTableColumns, ${args.selCols}, ${args.singleSelCol}>`);
-generateSelect("returning", "TReturningColumns", "TSingleColumn", "TFromTblCols",	args => `UpdateQuery<TUpdatedColumns, ${args.selCols}, TFromTblCols, ${args.singleSelCol}>`);
+generateSelect("returning", "TReturningColumns", "TSingleColumn", "TFromTblCols",	args => `UpdateQuery<TColumnsToUpdate, ${args.selCols}, TFromTblCols, ${args.singleSelCol}>`);
 generateSelect("returning", "TReturningColumns", "TSingleColumn", "TColumns",		args => `DeleteQuery<TColumns, ${args.selCols}, ${args.singleSelCol}>`);
 generateSelect("select",	"TSelectedCols",	 "TSingleColumn", "TFromTblCols",	args => `SelectQuery<${args.selCols}, TFromTblCols, ${args.singleSelCol}>`);
 

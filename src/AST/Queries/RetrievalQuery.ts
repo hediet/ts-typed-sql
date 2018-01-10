@@ -48,7 +48,7 @@ export class RetrievalQuery<TRow extends Row, TSingleColumn extends SingleColumn
 
 
 export class UnionQuery<TColumns, TSingleColumn extends SingleColumn<TColumns>> extends RetrievalQuery<TColumns, TSingleColumn> {
-	constructor(public readonly query1: RetrievalQuery<TColumns, TSingleColumn>, public readonly query2: RetrievalQuery<TColumns, any>) {
+	constructor(public readonly query1: RetrievalQuery<TColumns, TSingleColumn>, public readonly query2: RetrievalQuery<TColumns, any>, public readonly isUnionAll: boolean) {
 		super();
 
 		const s = query1.getState();
@@ -57,8 +57,14 @@ export class UnionQuery<TColumns, TSingleColumn extends SingleColumn<TColumns>> 
 	}
 }
 
+export function union<TColumns, TSingleColumn extends SingleColumn<TColumns>>(query1: RetrievalQuery<TColumns, TSingleColumn>, ...queries: RetrievalQuery<any, any>[])
+: RetrievalQuery<TColumns, TSingleColumn> {
+
+	return queries.reduce((p, c) => new UnionQuery(p, c, false), query1);
+}
+
 export function unionAll<TColumns, TSingleColumn extends SingleColumn<TColumns>>(query1: RetrievalQuery<TColumns, TSingleColumn>, ...queries: RetrievalQuery<any, any>[])
 	: RetrievalQuery<TColumns, TSingleColumn> {
 
-	return queries.reduce((p, c) => new UnionQuery(p, c), query1);
+	return queries.reduce((p, c) => new UnionQuery(p, c, true), query1);
 }

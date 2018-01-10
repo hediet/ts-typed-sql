@@ -10,7 +10,8 @@ export type SqlStatement = DeleteQuery<any, any, any>
 	| UpdateQuery<any, any, any, any>
 	| ValuesQuery<any>
 	| StartTransactionStatement
-	| CommitTransactionStatement;
+	| CommitTransactionStatement
+	| RollbackTransactionStatement;
 
 export enum IsolationLevel {
 	Serializable,

@@ -13,6 +13,27 @@ export interface DbQueryService extends SimpleDbQueryService {
 	getExclusiveQueryService<T>(scope: (service: SimpleDbQueryService) => Promise<T>): Promise<T>;
 }
 
+export class SqlError extends Error {
+	constructor(m: string, public readonly code: QueryErrorCode, public readonly sqlStatement: SqlStatement) {
+		super(m);
+		Object.setPrototypeOf(this, SqlError.prototype);
+	}
+}
+
+export enum QueryErrorCode {
+	ExpectedAtLeastOneRow,
+	MoreThanOneRowReturned
+}
+
+function expectedAtLeastOneRow(sqlStatement: SqlStatement) {
+	return new SqlError("Expected at least one row, but none were returned.", QueryErrorCode.ExpectedAtLeastOneRow, sqlStatement);
+}
+
+function moreThanOneRowReturned(sqlStatement: SqlStatement) {
+	return new SqlError("More than one row returned.", QueryErrorCode.MoreThanOneRowReturned, sqlStatement);
+}
+
+
 /**
  * Provides methods to execute queries.
  */
@@ -26,8 +47,8 @@ export class DbQueryInterface {
 	}
 
 	/**
-	 * Executes the query that only selects a single column and returns a list of values.
-	 * @param query A query that only selects a single column.
+	 * Executes a query which only selects a single column and returns a list of values.
+	 * @param query A query which only selects a single column.
 	 */
 	public async values<TRow extends Row, TColumn extends keyof TRow>(query: Query<TRow, TColumn>): Promise<GetOutType<TRow[TColumn]>[]> {
 		const rows = await this.exec(query);
@@ -46,17 +67,17 @@ export class DbQueryInterface {
 	}
 
 	/**
-	 * Returns the first row. Throws an `Error` if there is none.
+	 * Returns the first row. Throws an `SqlError` if there is none.
 	 * @param query The query to execute.
 	 */
 	public async first<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow>> {
 		const result = await this.firstOrUndefined(query);
-		if (!result) throw new Error("Expected at least one row.");
+		if (!result) throw expectedAtLeastOneRow(query);
 		return result;
 	}
 
 	/**
-	 * Returns the first row or `undefined` if there is none. Throws an `Error` if multiple rows are returned.
+	 * Returns the first row or `undefined` if there is none. Throws an `SqlError` if multiple rows are returned.
 	 * @param query The query to execute.
 	 */
 	public async singleOrUndefined<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow> | undefined> {
@@ -64,20 +85,20 @@ export class DbQueryInterface {
 			query = query.limit(2);
 		const rows = await this.exec(query);
 		if (rows.length === 0) return undefined;
-		if (rows.length >= 2) throw new Error("More than one row returned.");
+		if (rows.length >= 2) throw moreThanOneRowReturned(query);
 		return rows[0];
 	}
 
 	/**
-	 * Returns the first row. Throws an `Error` if no or multiple rows are returned.
+	 * Returns the first row. Throws an `SqlError` if no or multiple rows are returned.
 	 * @param query The query to execute.
 	 */
 	public async single<TRow extends Row>(query: Query<TRow, any>): Promise<MapOutType<TRow>> {
 		if (query instanceof RetrievalQuery)
 			query = query.limit(2);
 		const rows = await this.exec(query);
-		if (rows.length === 0) throw new Error("No row found.");
-		if (rows.length >= 2) throw new Error("More than one row returned.");
+		if (rows.length === 0) throw expectedAtLeastOneRow(query);
+		if (rows.length >= 2) throw moreThanOneRowReturned(query);
 		return rows[0];
 	}
 

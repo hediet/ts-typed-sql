@@ -65,21 +65,19 @@ export class VoidType extends Type<void, void, "void"> {
 }
 export const tVoid = new VoidType();
 
-export type RecordTypeToJson<T extends { _brand: string }> = RecordTypeToJson2<T>["result"];
-export type RecordTypeToJson1<T extends { result: any }> = { [TName in keyof T]: T[TName]["result"] };
-export type RecordTypeToJson2<T extends { _brand: string }> =
-{
-	result: // result is required for TypeScript to accept recursion
-		(
-			{
-				record: RecordTypeToJson1<{ [TName in keyof T["_recordType"]]: RecordTypeToJson2<T["_recordType"][TName]> }>
-			}
-			&
-			{ [other: string]: GetInType<T> }
-		)[T["_brand"]]
-};
+export type RecordTypeToJson<T extends { _brand: string, _recordType: { [name: string]: any } }> =
+(
+	{
+		record: { [TName in keyof T["_recordType"]]: RecordTypeToJson<T["_recordType"][TName]> }
+	}
+	&
+	{ [other: string]: GetInType<T> }
+)[T["_brand"]];
 
-// let test: RecordTypeToJson2<{ _brand: "record", _recordType: { p2: { _brand: "record", _recordType: { fooa: { _brand: "record", _recordType: { bla: IntegerType } } } } } }> = null!;
+
+
+//let test: RecordTypeToJson<{ _brand: "record", _recordType: { p2: { _brand: "record", _recordType: { fooa: { _brand: "record", _recordType: { bla: IntegerType } } } } } }> = null!;
+//test.p2.fooa.bla;
 
 
 export function tJson<T>(): Json<T> {

@@ -5,6 +5,7 @@ import {
 	update, val, defaultValue, SqlGenerator, PostgreQueryService, concat, not, deleteFrom, Query, PostgreSqlGenerator, values, Expression, tInteger, tText, tJson, ExpressionTypeOf, FromItem, HardRow, tBoolean
 } from "../src/index";
 import * as assert from "assert";
+import { regressionTests } from './extracted-regression-tests';
 
 const contacts = table("contacts",
 	{
@@ -525,3 +526,10 @@ describe("Insert", () => {
 		);
 	});
 });
+
+describe("Regression Tests", () => {
+	for(let i = 0; i < regressionTests.length; i++) {
+		const test = regressionTests[i];
+		it(`should not regress (${i})`, test);
+	}
+})

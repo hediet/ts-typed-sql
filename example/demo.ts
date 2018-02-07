@@ -30,7 +30,6 @@ const pool = new pg.Pool({
 	password: "FXLjrQ0"
 });
 
-
 (async function () {
 	try {
 		const queryService = new PostgreQueryService(pool, { shortenColumnNameIfUnambigous: true, skipQuotingIfNotRequired: true });

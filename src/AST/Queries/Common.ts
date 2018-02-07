@@ -22,7 +22,7 @@ export type Constructable<T> = new (...args: any[]) => T;
 export function resolveColumnReference<TExpr extends Expression<any>, TFromTblCols extends HardRow>(
 	fromItem: FromItem<TFromTblCols> | undefined, expression: TExpr | keyof TFromTblCols): TExpr | Column<string, AnyType> {
 
-	if (expression instanceof Expression) return expression;
+	if (expression instanceof Expression) return expression as TExpr;
 
 	if (typeof expression !== "string") throw new Error(`Expression must be either of type string or of type Expression, but was '${expression}'.`);
 

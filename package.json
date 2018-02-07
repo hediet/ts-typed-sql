@@ -1,6 +1,6 @@
 {
   "name": "@hediet/typed-sql",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "description": "A fully typed sql builder. Works best with TypeScript an Visual Studio Code.",
   "main": "dist/src/index.js",
   "directories": {

@@ -100,7 +100,7 @@ export abstract class SqlGenerator {
 	}
 
 	protected transformValuesQueryToSql(query: ValuesQuery<any>, context: Context): string {
-		const columns = query.columns;
+		const columns = query.columns as { [key in string]: any };
 
 		if (query.values.length === 0) {
 			return `SELECT ${Object.keys(columns).map(k => "null").join(", ")} WHERE false`;

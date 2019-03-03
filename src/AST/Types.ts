@@ -10,8 +10,8 @@ export type GetOutType<TType extends any> = TType["_outType"];
 
 export abstract class Type<TInType, TOutType, TBrand extends string> {
 	public readonly _brand: TBrand;
-	private _inType: TInType;
-	private _outType: TOutType;
+	_inType: TInType;
+	_outType: TOutType;
 
 	public abstract name: string;
 

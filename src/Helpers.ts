@@ -19,6 +19,8 @@ export function warn(message: string, ...args: any[]) {
 	sqlDebugWarn(message, ...args);
 }
 
+export type StringKeyOf<TObj> = Extract<string, keyof TObj>;
+
 export function toObject<T, K>(item: T[], keySelector: (item: T) => K): any
 export function toObject<T, K, V>(item: T[], keySelector: (item: T) => K, valueSelector: (item: T) => V): any
 export function toObject<T, K, V>(item: T[], keySelector: (item: T) => K, valueSelector?: (item: T) => V): any {

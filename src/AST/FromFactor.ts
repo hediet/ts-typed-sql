@@ -9,12 +9,12 @@ export function fromItemTypes<TColumns extends HardRow>(fromItem: FromItem<TColu
 	return toObject(objectValues(fromItem.$columns).filter(c => columns.indexOf(c.name) !== -1), k => k.name, k => k.type);
 }
 
-export interface Row {
-	[name: string]: any;//AnyType;
+export type Row = {
+	[name in string]: any;//AnyType;
 }
 
-export interface HardRow {
-	[name: string]: AnyType;
+export type HardRow = {
+	[name in string]: AnyType;
 }
 
 export interface Columns {
@@ -22,7 +22,7 @@ export interface Columns {
 }
 
 export type RowToColumns<TColumns extends HardRow>
-	= {[TName in keyof TColumns]: Column<TName, TColumns[TName]> };
+	= {[TName in StringKeyOf<TColumns>]: Column<TName, TColumns[TName]> };
 
 export type ColumnsToRow<TColumns extends Columns>
 	= {[TName in keyof TColumns]: ExpressionTypeOf<TColumns[TName]> };

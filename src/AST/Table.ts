@@ -40,7 +40,7 @@ export type TableToInRow<TFromItem extends Table<any, any>> =
 export type TableCtor<TRequiredColumns extends Row, TOptionalColumns extends Row> 
 	= Table<TRequiredColumns, TOptionalColumns> & RowToColumns<TRequiredColumns & TOptionalColumns>;
 
-export interface RowDescription { [columnName: string]: AnyType };
+export type RowDescription = { [columnName in string]: AnyType };
 
 export type RowDescriptionToRow<TColumns extends RowDescription> = TColumns;
 

@@ -11,6 +11,7 @@
     "sourceMap": true,
     "sourceRoot": ".",
     "experimentalDecorators": true,
+    "keyofStringsOnly": true,
     "noImplicitUseStrict": true,
     "outDir": "dist",
     "declaration": true

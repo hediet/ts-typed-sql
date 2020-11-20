@@ -80,6 +80,7 @@ export type FromItemToInRow<TFromItem extends FromItem<any>> =
 	{[TName in keyof TFromItem["$columns"]]: GetInType<ExpressionTypeOf<TFromItem["$columns"][TName]>> };
 
 export abstract class FromItem<TColumns extends HardRow> extends FromFactor {
+	[key: string]: any; // workaround for https://github.com/microsoft/TypeScript/issues/37324
 	public readonly $columns: RowToColumns<TColumns>;
 	public readonly $all: AllExpression<TColumns> = new AllExpression(this);
 

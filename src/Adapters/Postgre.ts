@@ -20,6 +20,7 @@ export class PostgreQueryServiceFactory {
 
 	}
 }*/
+export type PgClient = pg.Client | pg.PoolClient;
 
 export class PostgreQueryService implements DbQueryService {
 	public readonly sqlGenerator: PostgreSqlGenerator;
@@ -36,7 +37,7 @@ export class PostgreQueryService implements DbQueryService {
 		return this.execClient(query);
 	}
 
-	private async execClient(query: SqlStatement, client?: pg.Client): Promise<any> {
+	private async execClient(query: SqlStatement, client?: PgClient): Promise<any> {
 		const { sql:queryText, parameters } = this.sqlGenerator.toSql(query);
 		const resultRows = new Deferred<any[]>();
 
@@ -87,7 +88,7 @@ export class PostgreQueryService implements DbQueryService {
 	}
 
 	private readonly PostgreExclusiveQueryService = class PostgreExclusiveQueryService implements SimpleDbQueryService {
-		constructor(private readonly client: pg.Client, private readonly queryService: PostgreQueryService) {}
+		constructor(private readonly client: PgClient, private readonly queryService: PostgreQueryService) {}
 
 		public exec<TColumns>(query: Query<TColumns, any>): Promise<TColumns[]>;
 		public exec<TColumns>(statement: SqlStatement): Promise<void>;

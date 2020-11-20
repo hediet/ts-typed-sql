@@ -1,6 +1,6 @@
 {
   "name": "@phiresky/typed-sql",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "A fully typed sql builder. Works best with TypeScript an Visual Studio Code.",
   "main": "dist/src/index.js",
   "directories": {

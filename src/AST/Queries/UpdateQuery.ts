@@ -64,13 +64,13 @@ export class UpdateQuery<TColumnsToUpdate extends Row, TReturningColumns extends
 		if (typeof columnOrObject === "string") {
 			const column = getColumn(this._table, columnOrObject);
 			const expr = normalize(column.type, value);
-			this._updatedColumns[columnOrObject] = expr;
+			this._updatedColumns[columnOrObject as keyof TFromTblCols] = expr as any;
 		}
 		else {
 			for (const [name, value] of objectEntries(columnOrObject)) {
 				const column = getColumn(this._table, name);
 				const expr = normalize(column.type, value);
-				this._updatedColumns[name as string] = expr;
+				this._updatedColumns[name as keyof TFromTblCols] = expr as any;
 			}
 		}
 

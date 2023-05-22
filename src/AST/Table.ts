@@ -15,7 +15,7 @@ export class Table<TRequiredColumns extends Row, TOptionalColumns extends Row>
 
 	constructor(public readonly $name: TableName, requiredColumns: RowToColumns<TRequiredColumns>, 
 			optionalColumns: RowToColumns<TOptionalColumns>) {
-		super(combine(requiredColumns, optionalColumns), false);
+		super(combine(requiredColumns, optionalColumns) as any, false);
 
 		this.$requiredColumns = requiredColumns;
 		this.$optionalColumns = optionalColumns;

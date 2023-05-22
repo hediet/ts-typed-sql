@@ -24,7 +24,7 @@ export class DeleteQuery<TLastFromRow extends Row, TReturningRow extends Row, TS
 
 	constructor(private readonly table: FromItem<any> & Table<any, any>) {
 		super();
-		this.lastFromItem = table;
+		this.lastFromItem = table as any;
 	}
 
 	public getState() {

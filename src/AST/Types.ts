@@ -5,13 +5,13 @@ export type AnyType = Type<any, any, string>;
 
 export type MapOutType<TRow extends Row> = { [TName in keyof TRow]: GetOutType<TRow[TName]> };
 
-export type GetInType<TType extends any> = TType["_inType"];
-export type GetOutType<TType extends any> = TType["_outType"];
+export type GetInType<TType extends {_inType: any}> = TType["_inType"];
+export type GetOutType<TType extends {_outType: any}> = TType["_outType"];
 
 export abstract class Type<TInType, TOutType, TBrand extends string> {
 	public readonly _brand: TBrand;
-	private _inType: TInType;
-	private _outType: TOutType;
+	_inType: TInType;
+	_outType: TOutType;
 
 	public abstract name: string;
 
@@ -65,7 +65,7 @@ export class VoidType extends Type<void, void, "void"> {
 }
 export const tVoid = new VoidType();
 
-export type RecordTypeToJson<T extends { _brand: string, _recordType: { [name: string]: any } }> =
+export type RecordTypeToJson<T extends { _brand: string, _recordType: { [name: string]: any }, _inType: any }> =
 (
 	{
 		record: { [TName in keyof T["_recordType"]]: RecordTypeToJson<T["_recordType"][TName]> }

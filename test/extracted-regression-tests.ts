@@ -935,7 +935,7 @@ export const regressionTests = [
         ];
         const updateTmpTable = values(
             fromItemTypes(item_types, ["game", "market_hash_name", "uscents", "allow_incoming"]),
-            updateValues
+            updateValues as any
         ).as("temp");
         const updateQuery = update(item_types)
             .from(updateTmpTable)
